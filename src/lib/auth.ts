@@ -10,12 +10,19 @@ export type Session = {
 function deriveName(email: string) {
   const local = email.split("@")[0] ?? "user";
   const parts = local.split(/[._-]+/).filter(Boolean);
-  const name = parts.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join("");
+  const name = parts.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(" ");
   const initials =
     parts.length >= 2
       ? (parts[0][0] + parts[1][0]).toUpperCase()
       : (parts[0]?.slice(0, 2) ?? "US").toUpperCase();
   return { name: name || "User", initials };
+}
+
+function initialsFromName(fullName: string) {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "US";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 export function getSession(): Session | null {
@@ -32,6 +39,14 @@ export function getSession(): Session | null {
 export function login(email: string): Session {
   const { name, initials } = deriveName(email);
   const session: Session = { email, name, initials };
+  localStorage.setItem(KEY, JSON.stringify(session));
+  window.dispatchEvent(new Event("goodflag:auth"));
+  return session;
+}
+
+export function signup(name: string, email: string): Session {
+  const initials = initialsFromName(name);
+  const session: Session = { email, name: name.trim(), initials };
   localStorage.setItem(KEY, JSON.stringify(session));
   window.dispatchEvent(new Event("goodflag:auth"));
   return session;

@@ -5,21 +5,22 @@ import { Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/Logo";
-import { getSession, login } from "@/lib/auth";
+import { getSession, signup } from "@/lib/auth";
 
-export const Route = createFileRoute("/login")({
+export const Route = createFileRoute("/signup")({
   head: () => ({
     meta: [
-      { title: "Connexion — Usign" },
-      { name: "description", content: "Connectez-vous à votre espace Usign de signature électronique." },
+      { title: "Créer un compte — Usign" },
+      { name: "description", content: "Créez votre compte Usign en quelques secondes pour signer vos documents en ligne." },
     ],
   }),
-  component: LoginPage,
+  component: SignupPage,
 });
 
-function LoginPage() {
+function SignupPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -29,8 +30,8 @@ function LoginPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !password) return;
-    login(email.trim());
+    if (!name.trim() || !email.trim() || password.length < 6) return;
+    signup(name.trim(), email.trim());
     navigate({ to: "/" });
   };
 
@@ -46,11 +47,11 @@ function LoginPage() {
         <Logo />
         <div className="space-y-4">
           <h2 className="text-4xl font-semibold leading-tight">
-            La signature électronique<br />sécurisée pour vos équipes.
+            Rejoignez Usign<br />en quelques secondes.
           </h2>
           <p className="max-w-md text-sidebar-foreground/70">
-            Centralisez vos parapheurs, suivez l'avancement des signatures et archivez vos
-            documents en toute sérénité avec Usign.
+            Créez votre compte pour préparer vos parapheurs, inviter vos signataires et
+            suivre vos signatures en temps réel.
           </p>
         </div>
         <div className="text-xs text-sidebar-foreground/60">© Usign</div>
@@ -65,10 +66,24 @@ function LoginPage() {
         <div className="flex flex-1 items-center justify-center p-6">
           <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-6">
             <div className="space-y-2">
-              <h1 className="text-2xl font-semibold text-foreground">{t("auth.title")}</h1>
-              <p className="text-sm text-muted-foreground">{t("auth.subtitle")}</p>
+              <h1 className="text-2xl font-semibold text-foreground">{t("auth.signupTitle")}</h1>
+              <p className="text-sm text-muted-foreground">{t("auth.signupSubtitle")}</p>
             </div>
             <div className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  {t("auth.name")}
+                </label>
+                <Input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  autoFocus
+                  maxLength={80}
+                  placeholder={t("auth.namePlaceholder")}
+                />
+              </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   {t("auth.email")}
@@ -78,7 +93,7 @@ function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  autoFocus
+                  maxLength={255}
                   placeholder="vous@entreprise.com"
                 />
               </div>
@@ -91,20 +106,20 @@ function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  placeholder="••••••••"
+                  minLength={6}
+                  placeholder="6 caractères minimum"
                 />
               </div>
             </div>
             <Button type="submit" className="w-full bg-action text-action-foreground hover:opacity-90">
-              {t("auth.submit")}
+              {t("auth.signupSubmit")}
             </Button>
             <p className="text-center text-sm text-muted-foreground">
-              {t("auth.noAccount")}{" "}
-              <Link to="/signup" className="font-medium text-action hover:underline">
-                {t("auth.signupLink")}
+              {t("auth.haveAccount")}{" "}
+              <Link to="/login" className="font-medium text-action hover:underline">
+                {t("auth.loginLink")}
               </Link>
             </p>
-            <p className="text-center text-xs text-muted-foreground">{t("auth.demo")}</p>
           </form>
         </div>
       </div>
