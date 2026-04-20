@@ -17,25 +17,35 @@ function DocumentsPage() {
   const { binders } = useBinders();
   const [query, setQuery] = useState("");
 
-  // Mock: each non-draft binder has 1 document
+  // Aggregate every real document attached to a binder (any status).
   const docs = useMemo(
     () =>
       binders
-        .filter((b) => b.status !== "draft")
-        .map((b) => ({
-          id: `doc_${b.id}`,
-          name: `${b.name}.pdf`,
-          binder: b.name,
-          updatedAt: b.updatedAt,
-        }))
+        .flatMap((b) =>
+          (b.documents ?? []).map((d) => ({
+            id: d.id,
+            name: d.name,
+            binder: b.name,
+            updatedAt: b.updatedAt,
+          })),
+        )
         .filter((d) => d.name.toLowerCase().includes(query.toLowerCase())),
     [binders, query],
   );
 
-  const fmt = (iso: string) =>
-    new Date(iso).toLocaleString(i18n.language === "fr" ? "fr-FR" : "en-US", {
-      day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit",
-    });
+  // Deterministic UTC formatting → no SSR/client hydration mismatch.
+  const fmt = (iso: string) => {
+    const d = new Date(iso);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const dd = pad(d.getUTCDate());
+    const mm = pad(d.getUTCMonth() + 1);
+    const yy = String(d.getUTCFullYear()).slice(-2);
+    const hh = pad(d.getUTCHours());
+    const mi = pad(d.getUTCMinutes());
+    return i18n.language === "fr"
+      ? `${dd}/${mm}/${yy} ${hh}:${mi}`
+      : `${mm}/${dd}/${yy} ${hh}:${mi}`;
+  };
 
   return (
     <AppShell>
