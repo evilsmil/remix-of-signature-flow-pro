@@ -4,11 +4,12 @@ import { useTranslation } from "react-i18next";
 import { Search, ListFilter, ArrowDownUp, FileText } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useBinders } from "@/lib/store";
+import { formatDateTime } from "@/lib/format";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/documents")({
-  head: () => ({ meta: [{ title: "Documents — Goodflag" }] }),
+  head: () => ({ meta: [{ title: "Documents — Usign" }] }),
   component: DocumentsPage,
 });
 
@@ -17,25 +18,23 @@ function DocumentsPage() {
   const { binders } = useBinders();
   const [query, setQuery] = useState("");
 
-  // Mock: each non-draft binder has 1 document
+  // Aggregate every real document attached to a binder (any status).
   const docs = useMemo(
     () =>
       binders
-        .filter((b) => b.status !== "draft")
-        .map((b) => ({
-          id: `doc_${b.id}`,
-          name: `${b.name}.pdf`,
-          binder: b.name,
-          updatedAt: b.updatedAt,
-        }))
+        .flatMap((b) =>
+          (b.documents ?? []).map((d) => ({
+            id: d.id,
+            name: d.name,
+            binder: b.name,
+            updatedAt: b.updatedAt,
+          })),
+        )
         .filter((d) => d.name.toLowerCase().includes(query.toLowerCase())),
     [binders, query],
   );
 
-  const fmt = (iso: string) =>
-    new Date(iso).toLocaleString(i18n.language === "fr" ? "fr-FR" : "en-US", {
-      day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit",
-    });
+  const fmt = (iso: string) => formatDateTime(iso, i18n.language);
 
   return (
     <AppShell>

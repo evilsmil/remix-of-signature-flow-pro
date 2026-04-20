@@ -1,6 +1,8 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 
 import appCss from "../styles.css?url";
+// Initialize i18n eagerly so useTranslation() works on first render (SSR + client)
+import "@/lib/i18n";
 
 function NotFoundComponent() {
   return (
