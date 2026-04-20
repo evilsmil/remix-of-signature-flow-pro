@@ -240,15 +240,76 @@ function BinderDetail() {
         </div>
 
         <div className="space-y-10 px-8 py-8">
+          {/* Edit-mode banner */}
+          <div
+            className={`flex items-center gap-3 rounded-md border px-4 py-2.5 text-sm ${
+              editable
+                ? "border-action/30 bg-action/5 text-foreground"
+                : "border-border bg-muted/40 text-muted-foreground"
+            }`}
+          >
+            {editable ? (
+              <>
+                <Pencil className="h-4 w-4 text-action" />
+                <span className="flex-1">{t("detail.editableHint")}</span>
+                <Button size="sm" onClick={startBinder} className="gap-1.5">
+                  <Play className="h-3.5 w-3.5" /> {t("detail.startBinder")}
+                </Button>
+              </>
+            ) : (
+              <>
+                <Lock className="h-4 w-4" />
+                <span>{t("detail.lockedHint")}</span>
+              </>
+            )}
+          </div>
+
           {tab === "general" && (
             <Section title={t("detail.tabs.general")}>
               <Row label={t("newBinder.name")}>
-                <span className="text-sm text-foreground">{binder.name}</span>
-                <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                {editingField === "name" ? (
+                  <InlineEditor
+                    value={draftValue}
+                    onChange={setDraftValue}
+                    onCommit={commitEdit}
+                    onCancel={cancelEdit}
+                  />
+                ) : (
+                  <>
+                    <span className="text-sm text-foreground">{binder.name}</span>
+                    {editable && (
+                      <button
+                        onClick={() => startEdit("name", binder.name)}
+                        aria-label={t("detail.edit")}
+                      >
+                        <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-action" />
+                      </button>
+                    )}
+                  </>
+                )}
               </Row>
               <Row label={t("newBinder.description")}>
-                <span className="text-sm text-foreground">{binder.description ?? "—"}</span>
-                <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                {editingField === "description" ? (
+                  <InlineEditor
+                    value={draftValue}
+                    onChange={setDraftValue}
+                    onCommit={commitEdit}
+                    onCancel={cancelEdit}
+                    multiline
+                  />
+                ) : (
+                  <>
+                    <span className="text-sm text-foreground">{binder.description ?? "—"}</span>
+                    {editable && (
+                      <button
+                        onClick={() => startEdit("description", binder.description ?? "")}
+                        aria-label={t("detail.edit")}
+                      >
+                        <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-action" />
+                      </button>
+                    )}
+                  </>
+                )}
               </Row>
               <Row label={t("detail.owner")}>
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-[11px] font-semibold text-muted-foreground">
@@ -258,11 +319,29 @@ function BinderDetail() {
                   <div className="text-sm font-medium text-foreground">{binder.ownerName}</div>
                   <div className="text-xs text-muted-foreground">{binder.ownerEmail}</div>
                 </div>
-                <Pencil className="ml-2 h-3.5 w-3.5 text-muted-foreground" />
               </Row>
               <Row label={t("detail.group")}>
                 <Users className="h-4 w-4 text-foreground" />
-                <span className="text-sm text-foreground">{binder.group}</span>
+                {editingField === "group" ? (
+                  <InlineEditor
+                    value={draftValue}
+                    onChange={setDraftValue}
+                    onCommit={commitEdit}
+                    onCancel={cancelEdit}
+                  />
+                ) : (
+                  <>
+                    <span className="text-sm text-foreground">{binder.group}</span>
+                    {editable && (
+                      <button
+                        onClick={() => startEdit("group", binder.group)}
+                        aria-label={t("detail.edit")}
+                      >
+                        <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-action" />
+                      </button>
+                    )}
+                  </>
+                )}
               </Row>
               <Row label={t("detail.createdAt")}>
                 <span className="text-sm text-foreground">{fmt(binder.createdAt)}</span>
@@ -289,10 +368,19 @@ function BinderDetail() {
                   </span>
                 }
               >
-                <span className="text-sm text-foreground">
-                  {binder.consolidation ? t("common.yes") : t("common.no")}
-                </span>
-                <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                {editable ? (
+                  <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-foreground">
+                    <Checkbox
+                      checked={binder.consolidation}
+                      onCheckedChange={toggleConsolidation}
+                    />
+                    {binder.consolidation ? t("common.yes") : t("common.no")}
+                  </label>
+                ) : (
+                  <span className="text-sm text-foreground">
+                    {binder.consolidation ? t("common.yes") : t("common.no")}
+                  </span>
+                )}
               </Row>
             </Section>
           )}
@@ -323,10 +411,27 @@ function BinderDetail() {
                         >
                           {i + 1}
                         </div>
-                        <div className="flex-1 leading-tight">
-                          <div className="text-sm font-medium text-foreground">{s.name}</div>
-                          <div className="text-xs text-muted-foreground">{s.email}</div>
-                        </div>
+                        {editable ? (
+                          <div className="flex flex-1 flex-col gap-1.5 sm:flex-row">
+                            <Input
+                              value={s.name}
+                              onChange={(e) => updateSignerField(s.id, { name: e.target.value })}
+                              placeholder={t("newBinder.signerName")}
+                              className="h-8 flex-1 text-sm"
+                            />
+                            <Input
+                              value={s.email}
+                              onChange={(e) => updateSignerField(s.id, { email: e.target.value })}
+                              placeholder={t("newBinder.signerEmail")}
+                              className="h-8 flex-1 text-sm"
+                            />
+                          </div>
+                        ) : (
+                          <div className="flex-1 leading-tight">
+                            <div className="text-sm font-medium text-foreground">{s.name}</div>
+                            <div className="text-xs text-muted-foreground">{s.email}</div>
+                          </div>
+                        )}
                         <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                           <span className="rounded-full bg-muted px-2 py-0.5">
                             {zoneCount} {t("detail.zonesAssigned").toLowerCase()}
@@ -357,30 +462,39 @@ function BinderDetail() {
                           >
                             <ExternalLink className="h-3.5 w-3.5" /> {t("detail.openLink")}
                           </Link>
+                          {editable && (
+                            <button
+                              onClick={() => removeSigner(s.id)}
+                              className="rounded-md border border-destructive/30 bg-background p-1.5 text-destructive hover:bg-destructive/10"
+                              aria-label={t("detail.remove")}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
                         </div>
                       </li>
                     );
                   })}
                 </ul>
               )}
-              <button className="mx-auto mt-4 flex items-center gap-3 py-3 text-action">
-                <Plus className="h-4 w-4" />
-                <span className="font-medium">{t("detail.addStep")}</span>
-              </button>
+              {editable && (
+                <button
+                  onClick={addSignerRow}
+                  className="mx-auto mt-4 flex items-center gap-2 py-3 text-action hover:underline"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span className="font-medium">{t("detail.addSigner")}</span>
+                </button>
+              )}
             </Section>
           )}
 
           {(tab === "documents" || tab === "general") && (
             <Section title={t("detail.documentsTitle")}>
               {(binder.documents?.length ?? 0) === 0 ? (
-                <DropZone label={t("detail.addDocs")}>
-                  <label className="flex items-start gap-2 text-xs text-foreground">
-                    <Checkbox defaultChecked /> {t("detail.convertPdf")}
-                  </label>
-                  <label className="flex items-start gap-2 text-xs text-foreground">
-                    <Checkbox defaultChecked /> {t("detail.unzip")}
-                  </label>
-                </DropZone>
+                <p className="py-6 text-center text-sm text-muted-foreground">
+                  {t("newBinder.noDocuments")}
+                </p>
               ) : (
                 <ul className="space-y-2">
                   {binder.documents?.map((d) => {
@@ -397,28 +511,90 @@ function BinderDetail() {
                         <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                           {zones} {t("detail.zonesAssigned").toLowerCase()}
                         </span>
+                        {editable && (
+                          <button
+                            onClick={() => removeDocument(d.id)}
+                            className="rounded-md border border-destructive/30 bg-background p-1.5 text-destructive hover:bg-destructive/10"
+                            aria-label={t("detail.remove")}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                       </li>
                     );
                   })}
                 </ul>
               )}
+              {editable && (
+                <>
+                  <input
+                    ref={docInputRef}
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      onPickDocs(e.target.files);
+                      if (docInputRef.current) docInputRef.current.value = "";
+                    }}
+                  />
+                  <button
+                    onClick={() => docInputRef.current?.click()}
+                    className="mx-auto mt-4 flex items-center gap-2 py-2 text-sm font-medium text-action hover:underline"
+                  >
+                    <Plus className="h-4 w-4" /> {t("detail.addDocument")}
+                  </button>
+                </>
+              )}
 
-              {(binder.attachments?.length ?? 0) > 0 && (
+              {((binder.attachments?.length ?? 0) > 0 || editable) && (
                 <div className="mt-6">
                   <h4 className="mb-2 text-sm font-semibold text-foreground">
                     {t("detail.attachmentsTitle")}
                   </h4>
-                  <ul className="space-y-2">
-                    {binder.attachments?.map((a) => (
-                      <li
-                        key={a.id}
-                        className="flex items-center gap-3 rounded-md border bg-card px-3 py-2.5"
+                  {(binder.attachments?.length ?? 0) > 0 ? (
+                    <ul className="space-y-2">
+                      {binder.attachments?.map((a) => (
+                        <li
+                          key={a.id}
+                          className="flex items-center gap-3 rounded-md border bg-card px-3 py-2.5"
+                        >
+                          <Paperclip className="h-4 w-4 text-muted-foreground" />
+                          <span className="flex-1 text-sm text-foreground">{a.name}</span>
+                          {editable && (
+                            <button
+                              onClick={() => removeAttachment(a.id)}
+                              className="rounded-md border border-destructive/30 bg-background p-1.5 text-destructive hover:bg-destructive/10"
+                              aria-label={t("detail.remove")}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">{t("newBinder.noAttachments")}</p>
+                  )}
+                  {editable && (
+                    <>
+                      <input
+                        ref={attInputRef}
+                        type="file"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => {
+                          onPickAttachments(e.target.files);
+                          if (attInputRef.current) attInputRef.current.value = "";
+                        }}
+                      />
+                      <button
+                        onClick={() => attInputRef.current?.click()}
+                        className="mx-auto mt-3 flex items-center gap-2 py-2 text-sm font-medium text-action hover:underline"
                       >
-                        <Paperclip className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm text-foreground">{a.name}</span>
-                      </li>
-                    ))}
-                  </ul>
+                        <Plus className="h-4 w-4" /> {t("detail.addAttachment")}
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </Section>
@@ -439,11 +615,33 @@ function BinderDetail() {
                   </div>
                   <div className="text-xs text-muted-foreground">{binder.ownerEmail}</div>
                 </div>
-                <Pencil className="h-4 w-4 text-muted-foreground" />
               </div>
-              <button className="mx-auto flex items-center gap-2 py-3 text-sm font-medium text-action">
-                <Plus className="h-4 w-4" /> {t("detail.addCc")}
-              </button>
+              {(["onStart", "onComplete", "reminders"] as const).map((key) => {
+                const labelKey =
+                  key === "onStart"
+                    ? "newBinder.notifyOnStart"
+                    : key === "onComplete"
+                      ? "newBinder.notifyOnComplete"
+                      : "newBinder.notifyOnReminder";
+                const checked =
+                  binder.notifications?.[key] ??
+                  (key === "onStart" || key === "onComplete" ? true : false);
+                return (
+                  <label
+                    key={key}
+                    className={`flex items-center gap-2 py-1.5 text-sm ${
+                      editable ? "cursor-pointer text-foreground" : "text-muted-foreground"
+                    }`}
+                  >
+                    <Checkbox
+                      checked={checked}
+                      onCheckedChange={() => toggleNotif(key)}
+                      disabled={!editable}
+                    />
+                    {t(labelKey)}
+                  </label>
+                );
+              })}
             </Section>
           )}
 
