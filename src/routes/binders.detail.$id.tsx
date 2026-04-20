@@ -10,7 +10,7 @@ import { useBinders } from "@/lib/store";
 import { Checkbox } from "@/components/ui/checkbox";
 
 export const Route = createFileRoute("/binders/detail/$id")({
-  head: () => ({ meta: [{ title: "Détail parapheur — Goodflag" }] }),
+  head: () => ({ meta: [{ title: "Détail parapheur — Usign" }] }),
   component: BinderDetail,
 });
 
@@ -29,7 +29,7 @@ function BinderDetail() {
       <AppShell>
         <div className="text-center text-muted-foreground">
           Parapheur introuvable.{" "}
-          <Link to="/binders/$status" params={{ status: "draft" }} className="text-action underline">
+          <Link to="/binders/$status" params={{ status: "all" }} className="text-action underline">
             Retour
           </Link>
         </div>
