@@ -679,12 +679,55 @@ function Row({ label, children }: { label: React.ReactNode; children: React.Reac
   );
 }
 
-function DropZone({ label, children }: { label: string; children?: React.ReactNode }) {
+function InlineEditor({
+  value,
+  onChange,
+  onCommit,
+  onCancel,
+  multiline,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onCommit: () => void;
+  onCancel: () => void;
+  multiline?: boolean;
+}) {
   return (
-    <div className="mx-auto flex w-60 flex-col items-center gap-3 rounded-lg border-2 border-dashed border-action/40 bg-action/5 p-5 text-center">
-      <Download className="h-5 w-5 text-action" />
-      <div className="text-sm font-medium text-action">{label}</div>
-      {children && <div className="space-y-1.5">{children}</div>}
+    <div className="flex flex-1 items-center gap-1.5">
+      {multiline ? (
+        <Textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          autoFocus
+          rows={2}
+          className="flex-1 text-sm"
+        />
+      ) : (
+        <Input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          autoFocus
+          onKeyDown={(e) => {
+            if (e.key === "Enter") onCommit();
+            if (e.key === "Escape") onCancel();
+          }}
+          className="h-8 flex-1 text-sm"
+        />
+      )}
+      <button
+        onClick={onCommit}
+        className="rounded-md border border-action/40 bg-action/10 p-1.5 text-action hover:bg-action/20"
+        aria-label="Save"
+      >
+        <Check className="h-3.5 w-3.5" />
+      </button>
+      <button
+        onClick={onCancel}
+        className="rounded-md border bg-background p-1.5 text-muted-foreground hover:bg-accent"
+        aria-label="Cancel"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
     </div>
   );
 }
