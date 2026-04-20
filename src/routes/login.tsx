@@ -98,6 +98,12 @@ function LoginPage() {
             <Button type="submit" className="w-full bg-action text-action-foreground hover:opacity-90">
               {t("auth.submit")}
             </Button>
+            <p className="text-center text-sm text-muted-foreground">
+              {t("auth.noAccount")}{" "}
+              <Link to="/signup" className="font-medium text-action hover:underline">
+                {t("auth.signupLink")}
+              </Link>
+            </p>
             <p className="text-center text-xs text-muted-foreground">{t("auth.demo")}</p>
           </form>
         </div>
