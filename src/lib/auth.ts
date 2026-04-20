@@ -44,6 +44,14 @@ export function login(email: string): Session {
   return session;
 }
 
+export function signup(name: string, email: string): Session {
+  const initials = initialsFromName(name);
+  const session: Session = { email, name: name.trim(), initials };
+  localStorage.setItem(KEY, JSON.stringify(session));
+  window.dispatchEvent(new Event("goodflag:auth"));
+  return session;
+}
+
 export function logout() {
   localStorage.removeItem(KEY);
   window.dispatchEvent(new Event("goodflag:auth"));
