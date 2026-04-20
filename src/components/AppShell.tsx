@@ -14,37 +14,30 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
-const STATUS_KEYS = ["draft", "started", "finished", "stopped", "archived"] as const;
-
 function NavItem({
   to,
   icon: Icon,
   label,
   active,
-  children,
 }: {
   to: string;
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   active: boolean;
-  children?: React.ReactNode;
 }) {
   return (
-    <div>
-      <Link
-        to={to}
-        className={cn(
-          "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
-          active
-            ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
-            : "text-sidebar-foreground/85 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-        )}
-      >
-        <Icon className="h-5 w-5" />
-        <span>{label}</span>
-      </Link>
-      {children}
-    </div>
+    <Link
+      to={to}
+      className={cn(
+        "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
+        active
+          ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
+          : "text-sidebar-foreground/85 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+      )}
+    >
+      <Icon className="h-5 w-5" />
+      <span>{label}</span>
+    </Link>
   );
 }
 
@@ -58,13 +51,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const sync = () => setSession(getSession());
     sync();
+    window.addEventListener("usign:auth", sync);
     window.addEventListener("goodflag:auth", sync);
-    return () => window.removeEventListener("goodflag:auth", sync);
+    return () => {
+      window.removeEventListener("usign:auth", sync);
+      window.removeEventListener("goodflag:auth", sync);
+    };
   }, []);
 
   useEffect(() => {
     if (session === null && typeof window !== "undefined") {
-      // wait one tick to avoid hydration race
       const id = setTimeout(() => {
         if (!getSession()) navigate({ to: "/login" });
       }, 0);
@@ -81,7 +77,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const toggleLang = () => {
     const next = i18n.language === "fr" ? "en" : "fr";
     i18n.changeLanguage(next);
-    localStorage.setItem("goodflag.lang", next);
+    localStorage.setItem("usign.lang", next);
   };
 
   const handleLogout = () => {
@@ -102,37 +98,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
         <nav className="flex-1 space-y-1 px-3 py-2">
           <NavItem to="/" icon={Home} label={t("nav.home")} active={isHome} />
-          <NavItem to="/binders" icon={FilePlus2} label={t("nav.binders")} active={isBinders}>
-            {isBinders && (
-              <div className="ml-2 mt-1 space-y-0.5 border-l border-sidebar-border pl-3">
-                {STATUS_KEYS.map((k) => {
-                  const to = `/binders/${k}`;
-                  const active = path === to;
-                  return (
-                    <Link
-                      key={k}
-                      to={to}
-                      className={cn(
-                        "flex items-center gap-2 rounded px-2 py-1.5 text-xs font-medium transition-colors",
-                        active
-                          ? "text-sidebar-primary-foreground"
-                          : "text-sidebar-foreground/70 hover:text-sidebar-foreground",
-                      )}
-                    >
-                      <span
-                        className="h-2 w-2 rounded-sm"
-                        style={{ backgroundColor: `var(--status-${k})` }}
-                      />
-                      {t(`status.${k}`)}
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
-          </NavItem>
+          <NavItem to="/binders/all" icon={FilePlus2} label={t("nav.binders")} active={isBinders} />
           <NavItem to="/documents" icon={FileText} label={t("nav.documents")} active={isDocs} />
           <NavItem to="/contacts" icon={Users} label={t("nav.contacts")} active={isContacts} />
         </nav>
+        <div className="px-4 py-3 text-[10px] uppercase tracking-widest text-sidebar-foreground/40">
+          © Usign
+        </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -161,7 +133,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-sm font-semibold text-muted-foreground hover:bg-accent"
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-brand text-sm font-semibold text-brand-foreground hover:opacity-90"
                   aria-label="User menu"
                 >
                   {session?.initials ?? "··"}
