@@ -4,11 +4,12 @@ import { useTranslation } from "react-i18next";
 import { Search, ListFilter, ArrowDownUp, FileText } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useBinders } from "@/lib/store";
+import { formatDateTime } from "@/lib/format";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/documents")({
-  head: () => ({ meta: [{ title: "Documents — Goodflag" }] }),
+  head: () => ({ meta: [{ title: "Documents — Usign" }] }),
   component: DocumentsPage,
 });
 
