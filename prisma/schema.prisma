@@ -211,6 +211,7 @@ model User {
   notifications     Notification[]
   ownedTemplates    BinderTemplate[]      @relation("TemplateOwner")
   auditEvents       AuditEvent[]          @relation("AuditActor")
+  savedSignature    SavedSignature?
 
   @@index([role, isActive])
   @@index([deletedAt])
