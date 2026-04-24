@@ -21,6 +21,13 @@ import {
   Lock,
   Play,
   Check,
+  History,
+  XCircle,
+  BellRing,
+  Mail,
+  Eye,
+  ShieldCheck,
+  FileSignature,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -30,8 +37,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { formatDateTime } from "@/lib/format";
+import { generateSignedPdf, generateCertificatePdf } from "@/lib/evidence";
+import { getSession } from "@/lib/auth";
 import {
   SIGNER_COLORS,
+  type AuditEvent,
+  type AuditEventKind,
   type BinderDocument,
   type BinderAttachment,
   type BinderSigner,
@@ -42,12 +53,12 @@ export const Route = createFileRoute("/binders/detail/$id")({
   component: BinderDetail,
 });
 
-type Tab = "general" | "steps" | "documents" | "notifications" | "operations";
+type Tab = "general" | "steps" | "documents" | "history" | "notifications" | "operations";
 
 function BinderDetail() {
   const { id } = Route.useParams();
   const { t, i18n } = useTranslation();
-  const { binders, update } = useBinders();
+  const { binders, update, startBinder: startBinderAction, recordDownload } = useBinders();
   const navigate = useNavigate();
   const binder = binders.find((b) => b.id === id);
   const [tab, setTab] = useState<Tab>("general");
@@ -76,6 +87,7 @@ function BinderDetail() {
     { key: "general", label: t("detail.tabs.general") },
     { key: "steps", label: t("detail.tabs.steps") },
     { key: "documents", label: t("detail.tabs.documents") },
+    { key: "history", label: t("history.title") },
     { key: "notifications", label: t("detail.tabs.notifications") },
     { key: "operations", label: t("detail.tabs.operations") },
   ];
@@ -189,7 +201,20 @@ function BinderDetail() {
 
   const startBinder = () => {
     if (!editable) return;
-    update(binder.id, { status: "started", startedAt: new Date().toISOString() });
+    // Use the store action so audit events (started + invited per signer)
+    // are logged consistently.
+    startBinderAction(binder.id);
+  };
+
+  const onDownloadSigned = () => {
+    const session = getSession();
+    generateSignedPdf(binder, i18n.language);
+    recordDownload(binder.id, { name: session?.name, email: session?.email }, "signed_pdf");
+  };
+  const onDownloadCertificate = () => {
+    const session = getSession();
+    generateCertificatePdf(binder, i18n.language);
+    recordDownload(binder.id, { name: session?.name, email: session?.email }, "certificate");
   };
 
   return (
@@ -645,11 +670,43 @@ function BinderDetail() {
             </Section>
           )}
 
+          {tab === "history" && (
+            <Section title={t("history.title")}>
+              <AuditTimeline events={binder.auditEvents ?? []} lang={i18n.language} t={t} />
+            </Section>
+          )}
+
           {(tab === "operations" || tab === "general") && (
             <Section title={t("detail.tabs.operations")}>
-              <div className="flex flex-wrap gap-3 py-2">
-                <OpButton icon={Download} label="Télécharger" />
-                <OpButton icon={Pencil} label="Renommer" />
+              <div className="space-y-4 py-2">
+                <div>
+                  <h4 className="mb-2 text-sm font-semibold text-foreground">
+                    {t("downloads.title")}
+                  </h4>
+                  <p className="mb-3 text-xs text-muted-foreground">
+                    {binder.status === "finished"
+                      ? t("downloads.helpFinished")
+                      : t("downloads.helpPending")}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      onClick={onDownloadSigned}
+                      disabled={binder.status !== "finished"}
+                      className="gap-1.5"
+                    >
+                      <FileSignature className="h-4 w-4" />
+                      {t("downloads.signedPdf")}
+                    </Button>
+                    <Button
+                      onClick={onDownloadCertificate}
+                      variant="outline"
+                      className="gap-1.5"
+                    >
+                      <ShieldCheck className="h-4 w-4" />
+                      {t("downloads.certificate")}
+                    </Button>
+                  </div>
+                </div>
               </div>
             </Section>
           )}
@@ -732,16 +789,100 @@ function InlineEditor({
   );
 }
 
-function OpButton({
-  icon: Icon,
-  label,
+const AUDIT_ICONS: Record<AuditEventKind, React.ComponentType<{ className?: string }>> = {
+  "binder.created": Plus,
+  "binder.started": Play,
+  "binder.completed": CheckCircle2,
+  "binder.stopped": XCircle,
+  "binder.archived": Lock,
+  "signer.invited": Mail,
+  "signer.viewed": Eye,
+  "signer.signed": CheckCircle2,
+  "signer.declined": XCircle,
+  "signer.reminded": BellRing,
+  "evidence.downloaded": Download,
+};
+
+const AUDIT_TONES: Record<AuditEventKind, string> = {
+  "binder.created": "text-muted-foreground",
+  "binder.started": "text-action",
+  "binder.completed": "text-action",
+  "binder.stopped": "text-destructive",
+  "binder.archived": "text-muted-foreground",
+  "signer.invited": "text-action",
+  "signer.viewed": "text-muted-foreground",
+  "signer.signed": "text-action",
+  "signer.declined": "text-destructive",
+  "signer.reminded": "text-action",
+  "evidence.downloaded": "text-muted-foreground",
+};
+
+function AuditTimeline({
+  events,
+  lang,
+  t,
 }: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
+  events: AuditEvent[];
+  lang: string;
+  t: (key: string) => string;
 }) {
+  if (events.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-2 py-8 text-center">
+        <History className="h-8 w-8 text-muted-foreground/60" />
+        <p className="text-sm text-muted-foreground">{t("history.empty")}</p>
+      </div>
+    );
+  }
+  // Newest events first.
+  const sorted = events.slice().sort((a, b) => b.at.localeCompare(a.at));
   return (
-    <button className="flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm font-medium text-foreground transition hover:bg-accent">
-      <Icon className="h-4 w-4" /> {label}
-    </button>
+    <ol className="relative space-y-3 pl-6">
+      <span className="absolute left-2 top-2 bottom-2 w-px bg-border" aria-hidden />
+      {sorted.map((ev) => {
+        const Icon = AUDIT_ICONS[ev.kind] ?? History;
+        const tone = AUDIT_TONES[ev.kind] ?? "text-foreground";
+        return (
+          <li key={ev.id} className="relative">
+            <span
+              className={`absolute -left-[18px] top-1 flex h-4 w-4 items-center justify-center rounded-full border bg-background ${tone}`}
+            >
+              <Icon className="h-2.5 w-2.5" />
+            </span>
+            <div className="rounded-md border bg-card px-3 py-2">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className={`text-sm font-medium ${tone}`}>
+                  {t(`history.kinds.${ev.kind}` as never) || ev.kind}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {formatDateTime(ev.at, lang)}
+                </span>
+              </div>
+              {(ev.actorName || ev.actorEmail) && (
+                <div className="mt-0.5 text-xs text-muted-foreground">
+                  {ev.actorName ?? ""}
+                  {ev.actorEmail ? ` <${ev.actorEmail}>` : ""}
+                  {ev.targetName || ev.targetEmail ? (
+                    <>
+                      {" → "}
+                      {ev.targetName ?? ""}
+                      {ev.targetEmail ? ` <${ev.targetEmail}>` : ""}
+                    </>
+                  ) : null}
+                </div>
+              )}
+              {ev.message && (
+                <p className="mt-1 text-xs text-foreground/80">{ev.message}</p>
+              )}
+              {ev.ip && (
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  {t("history.ip")} : {ev.ip}
+                </p>
+              )}
+            </div>
+          </li>
+        );
+      })}
+    </ol>
   );
 }

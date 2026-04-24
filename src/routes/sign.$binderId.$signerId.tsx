@@ -9,15 +9,19 @@ import {
   Paperclip,
   Pen,
   ShieldCheck,
+  XCircle,
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { DocumentPagePreview } from "@/components/DocumentPagePreview";
 import { SignaturePad, type SignatureResult } from "@/components/SignaturePad";
 import { useBinders } from "@/lib/store";
@@ -32,10 +36,34 @@ export const Route = createFileRoute("/sign/$binderId/$signerId")({
 function SignPage() {
   const { binderId, signerId } = Route.useParams();
   const { t, i18n } = useTranslation();
-  const { binders, signAs } = useBinders();
+  const { binders, signAs, markSignerViewed, declineAs } = useBinders();
   const navigate = useNavigate();
   const binder = binders.find((b) => b.id === binderId);
   const signer = binder?.signers?.find((s) => s.id === signerId);
+  const [declineOpen, setDeclineOpen] = useState(false);
+  const [declineReason, setDeclineReason] = useState("");
+  const [declineErr, setDeclineErr] = useState<string | null>(null);
+  const [declined, setDeclined] = useState(false);
+
+  // Log "viewed" once when the signer opens the page (only if pending).
+  useEffect(() => {
+    if (binder && signer && signer.status !== "signed" && !signer.viewedAt) {
+      markSignerViewed(binder.id, signer.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [binder?.id, signer?.id]);
+
+  const submitDecline = () => {
+    if (!binder || !signer) return;
+    const reason = declineReason.trim();
+    if (reason.length < 3) {
+      setDeclineErr(t("decline.error"));
+      return;
+    }
+    declineAs(binder.id, signer.id, reason);
+    setDeclined(true);
+    setDeclineOpen(false);
+  };
 
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [activePage, setActivePage] = useState(1);
@@ -105,6 +133,25 @@ function SignPage() {
           <Button
             onClick={() => navigate({ to: "/" })}
             className="mt-5 bg-action text-action-foreground hover:opacity-90"
+          >
+            {t("sign.backHome")}
+          </Button>
+        </Card>
+      </PublicShell>
+    );
+  }
+
+  if (declined || signer.status === "declined") {
+    return (
+      <PublicShell onToggleLang={toggleLang}>
+        <Card>
+          <XCircle className="mx-auto h-14 w-14 text-destructive" />
+          <h2 className="mt-3 text-2xl font-semibold text-foreground">{t("decline.success")}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{binder.name}</p>
+          <Button
+            onClick={() => navigate({ to: "/" })}
+            variant="outline"
+            className="mt-5"
           >
             {t("sign.backHome")}
           </Button>
@@ -406,6 +453,18 @@ function SignPage() {
               <ShieldCheck className="mr-2 h-4 w-4" /> {t("sign.finalize")}
             </Button>
 
+            <Button
+              onClick={() => {
+                setDeclineErr(null);
+                setDeclineReason("");
+                setDeclineOpen(true);
+              }}
+              variant="outline"
+              className="mt-2 w-full border-destructive/30 text-destructive hover:bg-destructive/5 hover:text-destructive"
+            >
+              <XCircle className="mr-2 h-4 w-4" /> {t("decline.button")}
+            </Button>
+
             {totalToSign === 0 && (
               <p className="mt-3 text-center text-xs text-muted-foreground">
                 {t("sign.allSigned")}
@@ -434,6 +493,48 @@ function SignPage() {
               }}
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Decline-to-sign dialog */}
+      <Dialog open={declineOpen} onOpenChange={setDeclineOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("decline.title")}</DialogTitle>
+            <DialogDescription>{t("decline.intro")}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label
+              htmlFor="decline-reason"
+              className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
+            >
+              {t("decline.reasonLabel")}
+            </label>
+            <Textarea
+              id="decline-reason"
+              value={declineReason}
+              onChange={(e) => {
+                setDeclineReason(e.target.value);
+                if (declineErr) setDeclineErr(null);
+              }}
+              placeholder={t("decline.reasonPlaceholder")}
+              rows={4}
+              autoFocus
+            />
+            {declineErr && <p className="text-xs text-destructive">{declineErr}</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeclineOpen(false)}>
+              {t("decline.cancel")}
+            </Button>
+            <Button
+              onClick={submitDecline}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              <XCircle className="mr-2 h-4 w-4" />
+              {t("decline.confirm")}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </PublicShell>

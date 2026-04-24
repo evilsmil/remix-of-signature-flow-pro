@@ -144,7 +144,8 @@ function InboxPage() {
           </div>
         ) : (
           <div className="overflow-hidden rounded-lg border bg-card">
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm">
               <thead className="border-b bg-muted/40 text-[11px] uppercase tracking-wider text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3 text-left font-semibold">{t("inbox.cols.binder")}</th>
@@ -216,6 +217,7 @@ function InboxPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         )}
       </div>
