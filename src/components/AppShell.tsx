@@ -49,6 +49,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // Desktop: sidebar open by default. Mobile: closed by default (drawer).
   const [open, setOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  // Avoid SSR/CSR text mismatch for i18n-translated header title.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     const sync = () => setSession(getSession());
@@ -153,21 +156,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Menu className="h-5 w-5" />
             </Button>
             <h1 className="truncate text-base font-semibold text-foreground sm:text-lg">
-              {isHome
-                ? t("home.greeting", { name: session?.name ?? "" })
-                : isBinders
-                  ? t("binders.title")
-                  : isInbox
-                    ? t("inbox.title")
-                    : isSent
-                      ? t("sent.title")
-                      : isDocs
-                        ? t("documents.title")
-                        : isContacts
-                          ? t("contacts.title")
-                          : isMySig
-                            ? t("mySignature.title")
-                            : ""}
+              {mounted
+                ? isHome
+                  ? t("home.greeting", { name: session?.name ?? "" })
+                  : isBinders
+                    ? t("binders.title")
+                    : isInbox
+                      ? t("inbox.title")
+                      : isSent
+                        ? t("sent.title")
+                        : isDocs
+                          ? t("documents.title")
+                          : isContacts
+                            ? t("contacts.title")
+                            : isMySig
+                              ? t("mySignature.title")
+                              : path.startsWith("/settings")
+                                ? t("settings.title")
+                                : ""
+                : ""}
             </h1>
           </div>
           <div className="flex items-center gap-1 sm:gap-2">
