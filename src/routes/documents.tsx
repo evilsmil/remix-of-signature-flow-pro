@@ -58,7 +58,7 @@ function DocumentsPage() {
         <div className="overflow-hidden rounded-lg border bg-card">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[480px] text-sm">
-            <thead className="border-b bg-muted/40 text-[11px] uppercase tracking-wider text-muted-foreground">
+              <thead className="border-b bg-muted/40 text-[11px] uppercase tracking-wider text-muted-foreground">
               <tr>
                 <th className="px-4 py-3 text-left font-semibold">{t("documents.cols.name")}</th>
                 <th className="px-4 py-3 text-left font-semibold">{t("documents.cols.binder")}</th>
