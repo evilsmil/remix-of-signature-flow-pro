@@ -27,6 +27,8 @@ export type BinderSigner = {
   signatureData?: string; // dataURL or typed name
 };
 
+export type SignatureFieldKind = "signature" | "initial";
+
 export type SignatureField = {
   id: string;
   documentId: string;
@@ -36,9 +38,19 @@ export type SignatureField = {
   width: number; // 0..1 relative
   height: number; // 0..1 relative
   signerId: string;
+  /** "signature" = full signature ; "initial" = paraphe (initiales auto). */
+  kind?: SignatureFieldKind;
   signedAt?: string;
   signatureData?: string;
 };
+
+/** Returns initials (max 3 chars) from a full name, e.g. "Jeanne Marie Dupont" -> "JMD". */
+export function getInitialsFromName(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return parts.slice(0, 3).map((p) => p[0]?.toUpperCase() ?? "").join("");
+}
 
 export type BinderNotifications = {
   onStart: boolean;

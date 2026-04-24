@@ -29,6 +29,7 @@ import {
   type BinderSigner,
   type BinderNotifications,
   type SignatureField,
+  type SignatureFieldKind,
   SIGNER_COLORS,
 } from "@/lib/mockData";
 import { cn } from "@/lib/utils";
@@ -56,6 +57,9 @@ const STEPS: StepKey[] = [
 // Width / height of a signature zone, in fractions of the page.
 const ZONE_W = 0.22;
 const ZONE_H = 0.06;
+// Smaller default for an "initial" (paraphe) zone.
+const INITIAL_W = 0.09;
+const INITIAL_H = 0.05;
 
 export function NewBinderDialog({
   open,
@@ -88,6 +92,7 @@ export function NewBinderDialog({
   const [activeSignerId, setActiveSignerId] = useState<string | null>(null);
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [activePage, setActivePage] = useState(1);
+  const [activeKind, setActiveKind] = useState<SignatureFieldKind>("signature");
 
   const stepIndex = STEPS.indexOf(step);
 
@@ -207,17 +212,20 @@ export function NewBinderDialog({
     const rect = e.currentTarget.getBoundingClientRect();
     const xRel = (e.clientX - rect.left) / rect.width;
     const yRel = (e.clientY - rect.top) / rect.height;
+    const w = activeKind === "initial" ? INITIAL_W : ZONE_W;
+    const h = activeKind === "initial" ? INITIAL_H : ZONE_H;
     setFields((p) => [
       ...p,
       {
         id: `f_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
         documentId: activeDocId,
         page: activePage,
-        x: Math.max(0, Math.min(1 - ZONE_W, xRel - ZONE_W / 2)),
-        y: Math.max(0, Math.min(1 - ZONE_H, yRel - ZONE_H / 2)),
-        width: ZONE_W,
-        height: ZONE_H,
+        x: Math.max(0, Math.min(1 - w, xRel - w / 2)),
+        y: Math.max(0, Math.min(1 - h, yRel - h / 2)),
+        width: w,
+        height: h,
         signerId: activeSignerId,
+        kind: activeKind,
       },
     ]);
   };
@@ -495,6 +503,38 @@ export function NewBinderDialog({
                     </div>
                   </div>
 
+                  {/* Kind selector: signature vs initial (paraphe) */}
+                  <div className="space-y-1.5">
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      {t("newBinder.zoneKind")}
+                    </div>
+                    <div className="inline-flex rounded-md border bg-card p-0.5">
+                      {(["signature", "initial"] as const).map((k) => {
+                        const active = activeKind === k;
+                        return (
+                          <button
+                            key={k}
+                            type="button"
+                            onClick={() => setActiveKind(k)}
+                            className={cn(
+                              "rounded px-3 py-1.5 text-xs font-medium transition",
+                              active
+                                ? "bg-action text-action-foreground"
+                                : "text-foreground hover:bg-accent",
+                            )}
+                          >
+                            {t(`newBinder.kind.${k}` as never)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      {activeKind === "initial"
+                        ? t("newBinder.kindHelpInitial")
+                        : t("newBinder.kindHelpSignature")}
+                    </p>
+                  </div>
+
                   {/* Doc tabs */}
                   <div className="flex flex-wrap gap-2 border-b pb-2">
                     {documents.map((d) => (
@@ -553,12 +593,18 @@ export function NewBinderDialog({
                         {fieldsOnPage.map((f) => {
                           const signer = signers.find((s) => s.id === f.signerId);
                           const color = signer?.color ?? "#0EA5E9";
+                          const isInitial = f.kind === "initial";
+                          const baseLabel =
+                            signer?.name?.split(" ")[0] || `#${signer?.order}`;
+                          const label = isInitial
+                            ? `${t("newBinder.kind.initial")} · ${baseLabel}`
+                            : baseLabel;
                           return (
                             <ResizableField
                               key={f.id}
                               field={f}
                               color={color}
-                              label={signer?.name?.split(" ")[0] || `#${signer?.order}`}
+                              label={label}
                               onChange={(patch) => updateField(f.id, patch)}
                               onRemove={() => removeField(f.id)}
                             />

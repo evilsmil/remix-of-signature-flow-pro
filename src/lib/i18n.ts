@@ -128,6 +128,11 @@ const resources = {
         zonesCount_one: "{{count}} zone",
         clickToPlace: "Cliquez pour placer une signature",
         removeZone: "Supprimer cette zone",
+        zoneKind: "Type de zone",
+        kind: { signature: "Signature", initial: "Paraphe (initiales)" },
+        kindHelpSignature: "Zone de signature complète, à dessiner ou saisir.",
+        kindHelpInitial:
+          "Zone de paraphe automatique : les initiales du signataire seront apposées en un clic.",
       },
       detail: {
         title: "Détail du parapheur",
@@ -241,6 +246,8 @@ const resources = {
         alreadySigned: "Vous avez déjà signé ce parapheur.",
         progress: "{{done}} / {{total}} signature(s) apposée(s)",
         zoneOf: "Zone {{n}} — page {{p}} de {{doc}}",
+        initialZoneLabel: "Cliquez pour viser",
+        initialOf: "Paraphe {{n}} — page {{p}} de {{doc}}",
       },
     },
   },
@@ -370,6 +377,11 @@ const resources = {
         zonesCount_one: "{{count}} zone",
         clickToPlace: "Click to place a signature",
         removeZone: "Remove this zone",
+        zoneKind: "Zone type",
+        kind: { signature: "Signature", initial: "Initials (paraphe)" },
+        kindHelpSignature: "Full signature zone, to draw or type.",
+        kindHelpInitial:
+          "Automatic initials zone: the signer's initials are applied in one click.",
       },
       detail: {
         title: "Binder detail",
@@ -483,6 +495,8 @@ const resources = {
         alreadySigned: "You have already signed this binder.",
         progress: "{{done}} / {{total}} signature(s) applied",
         zoneOf: "Zone {{n}} — page {{p}} of {{doc}}",
+        initialZoneLabel: "Click to initial",
+        initialOf: "Initials {{n}} — page {{p}} of {{doc}}",
       },
     },
   },

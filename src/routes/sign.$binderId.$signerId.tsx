@@ -21,7 +21,7 @@ import {
 import { DocumentPagePreview } from "@/components/DocumentPagePreview";
 import { SignaturePad, type SignatureResult } from "@/components/SignaturePad";
 import { useBinders } from "@/lib/store";
-import type { SignatureField } from "@/lib/mockData";
+import { getInitialsFromName, type SignatureField } from "@/lib/mockData";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/sign/$binderId/$signerId")({
@@ -120,10 +120,28 @@ function SignPage() {
   );
 
   const finalize = () => {
-    // Use the most recent applied signature as the canonical one for this signer
-    const last = Object.values(pendingSignatures).pop();
-    if (!last) return;
-    signAs(binder.id, signer.id, { method: last.method, signatureData: last.data });
+    // Use the most recent applied "signature" entry as canonical, but pass
+    // per-field overrides so that "initial" zones keep their initials text.
+    const entries = Object.entries(pendingSignatures);
+    if (entries.length === 0) return;
+    // Prefer a non-initial entry as canonical (full signature), else fallback.
+    const sigEntries = entries.filter(([fid]) => {
+      const fld = myFields.find((f) => f.id === fid);
+      return fld?.kind !== "initial";
+    });
+    const canonical = (sigEntries[sigEntries.length - 1] ?? entries[entries.length - 1])[1];
+    const fieldOverrides: Record<
+      string,
+      { method: SignatureResult["method"]; signatureData: string }
+    > = {};
+    for (const [fid, res] of entries) {
+      fieldOverrides[fid] = { method: res.method, signatureData: res.data };
+    }
+    signAs(binder.id, signer.id, {
+      method: canonical.method,
+      signatureData: canonical.data,
+      fieldOverrides,
+    });
     setDone(true);
   };
 
@@ -202,10 +220,26 @@ function SignPage() {
                       const filled = Boolean(pendingSignatures[f.id] || f.signatureData);
                       const fSigner = binder.signers?.find((s) => s.id === f.signerId);
                       const color = fSigner?.color ?? "#0EA5E9";
+                      const isInitial = f.kind === "initial";
+                      const initialsText = getInitialsFromName(fSigner?.name ?? "");
+                      const onZoneClick = () => {
+                        if (!isMine || filled) return;
+                        if (isInitial) {
+                          // Auto-fill the initial (paraphe) zone with the signer's initials.
+                          setPendingSignatures((prev) => ({
+                            ...prev,
+                            [f.id]: { method: "typed", data: initialsText },
+                          }));
+                        } else {
+                          setActiveFieldId(f.id);
+                        }
+                      };
+                      const filledMethod = pendingSignatures[f.id]?.method;
+                      const filledData = pendingSignatures[f.id]?.data;
                       return (
                         <button
                           key={f.id}
-                          onClick={() => isMine && !filled && setActiveFieldId(f.id)}
+                          onClick={onZoneClick}
                           disabled={!isMine || filled}
                           className={cn(
                             "absolute flex items-center justify-center overflow-hidden rounded border-2 text-[10px] font-semibold uppercase shadow-sm transition",
@@ -223,10 +257,16 @@ function SignPage() {
                           }}
                         >
                           {filled ? (
-                            pendingSignatures[f.id]?.method === "drawn" ||
-                            pendingSignatures[f.id]?.method === "image" ? (
+                            isInitial ? (
+                              <span
+                                className="font-bold tracking-widest text-slate-900"
+                                style={{ fontSize: "14px" }}
+                              >
+                                {filledData}
+                              </span>
+                            ) : filledMethod === "drawn" || filledMethod === "image" ? (
                               <img
-                                src={pendingSignatures[f.id]?.data}
+                                src={filledData}
                                 alt=""
                                 className="max-h-full max-w-full object-contain"
                               />
@@ -235,19 +275,23 @@ function SignPage() {
                                 className="truncate px-1 normal-case text-slate-900"
                                 style={{
                                   fontFamily:
-                                    pendingSignatures[f.id]?.method === "typed"
+                                    filledMethod === "typed"
                                       ? '"Brush Script MT", "Snell Roundhand", cursive'
                                       : undefined,
                                   fontSize: "13px",
                                 }}
                               >
-                                {pendingSignatures[f.id]?.data}
+                                {filledData}
                               </span>
                             )
                           ) : (
                             <span className="flex items-center gap-1">
                               <Pen className="h-2.5 w-2.5" />
-                              {isMine ? t("sign.zoneLabel") : fSigner?.name?.split(" ")[0]}
+                              {isMine
+                                ? isInitial
+                                  ? t("sign.initialZoneLabel")
+                                  : t("sign.zoneLabel")
+                                : fSigner?.name?.split(" ")[0]}
                             </span>
                           )}
                         </button>
@@ -335,11 +379,17 @@ function SignPage() {
                           {filled ? "✓" : i + 1}
                         </span>
                         <span className="text-foreground">
-                          {t("sign.zoneOf", {
-                            n: i + 1,
-                            p: f.page,
-                            doc: doc?.name ?? "—",
-                          })}
+                          {f.kind === "initial"
+                            ? t("sign.initialOf", {
+                                n: i + 1,
+                                p: f.page,
+                                doc: doc?.name ?? "—",
+                              })
+                            : t("sign.zoneOf", {
+                                n: i + 1,
+                                p: f.page,
+                                doc: doc?.name ?? "—",
+                              })}
                         </span>
                       </button>
                     </li>
