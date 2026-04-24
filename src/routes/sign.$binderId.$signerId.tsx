@@ -141,6 +141,25 @@ function SignPage() {
     );
   }
 
+  if (declined || signer.status === "declined") {
+    return (
+      <PublicShell onToggleLang={toggleLang}>
+        <Card>
+          <XCircle className="mx-auto h-14 w-14 text-destructive" />
+          <h2 className="mt-3 text-2xl font-semibold text-foreground">{t("decline.success")}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{binder.name}</p>
+          <Button
+            onClick={() => navigate({ to: "/" })}
+            variant="outline"
+            className="mt-5"
+          >
+            {t("sign.backHome")}
+          </Button>
+        </Card>
+      </PublicShell>
+    );
+  }
+
   const activeDoc = binder.documents?.find((d) => d.id === activeDocId);
   const activeField = myFields.find((f) => f.id === activeFieldId);
   const fieldsOnPage = (binder.signatureFields ?? []).filter(
