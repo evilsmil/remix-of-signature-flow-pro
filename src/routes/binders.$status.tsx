@@ -182,6 +182,7 @@ function BindersByStatus() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
       <NewBinderDialog
