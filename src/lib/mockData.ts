@@ -91,6 +91,12 @@ export function getInitialsFromName(name: string): string {
   return parts.slice(0, 3).map((p) => p[0]?.toUpperCase() ?? "").join("");
 }
 
+/** Generate a deterministic-looking fake IPv4 (mock only). */
+export function mockIp(): string {
+  const r = () => Math.floor(Math.random() * 240) + 10;
+  return `${r()}.${r()}.${r()}.${r()}`;
+}
+
 export type BinderNotifications = {
   onStart: boolean;
   onComplete: boolean;
