@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Send as SendIcon, BellRing, ExternalLink, CheckCircle2, Clock, XCircle } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
