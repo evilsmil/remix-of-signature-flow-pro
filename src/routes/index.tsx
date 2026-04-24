@@ -101,8 +101,14 @@ function HomePage() {
           </div>
         </section>
       </div>
-      <NewBinderDialog open={newBinderOpen} onOpenChange={setNewBinderOpen} />
-      <NewContactDialog open={newContactOpen} onOpenChange={setNewContactOpen} />
+      <Suspense fallback={null}>
+        {newBinderOpen && (
+          <NewBinderDialog open={newBinderOpen} onOpenChange={setNewBinderOpen} />
+        )}
+        {newContactOpen && (
+          <NewContactDialog open={newContactOpen} onOpenChange={setNewContactOpen} />
+        )}
+      </Suspense>
     </AppShell>
   );
 }
