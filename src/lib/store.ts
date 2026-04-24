@@ -2,6 +2,9 @@ import { useEffect, useState, useCallback } from "react";
 import {
   initialBinders,
   initialContacts,
+  mockIp,
+  type AuditEvent,
+  type AuditEventKind,
   type Binder,
   type BinderDocument,
   type BinderAttachment,
