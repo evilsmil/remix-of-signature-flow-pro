@@ -593,12 +593,18 @@ export function NewBinderDialog({
                         {fieldsOnPage.map((f) => {
                           const signer = signers.find((s) => s.id === f.signerId);
                           const color = signer?.color ?? "#0EA5E9";
+                          const isInitial = f.kind === "initial";
+                          const baseLabel =
+                            signer?.name?.split(" ")[0] || `#${signer?.order}`;
+                          const label = isInitial
+                            ? `${t("newBinder.kind.initial")} · ${baseLabel}`
+                            : baseLabel;
                           return (
                             <ResizableField
                               key={f.id}
                               field={f}
                               color={color}
-                              label={signer?.name?.split(" ")[0] || `#${signer?.order}`}
+                              label={label}
                               onChange={(patch) => updateField(f.id, patch)}
                               onRemove={() => removeField(f.id)}
                             />
