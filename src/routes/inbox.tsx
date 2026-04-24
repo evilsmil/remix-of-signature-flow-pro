@@ -217,6 +217,7 @@ function InboxPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         )}
       </div>
