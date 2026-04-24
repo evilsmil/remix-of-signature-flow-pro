@@ -514,17 +514,24 @@ model BinderSigner {
   order      Int           @default(1)
   status     SignerStatus  @default(PENDING)
 
+  /// Première ouverture de la page de signature par le destinataire.
+  viewedAt   DateTime?
+
   signedAt   DateTime?
   signatureMethod SignatureMethod?
   /// URL ou clé du blob de signature (image PNG, ou texte typé)
   signatureData   String?
+
+  /// Refus motivé : date + raison fournie par le signataire.
+  declinedAt     DateTime?
+  declinedReason String?
 
   /// Token d'invitation (hash). Le token brut n'est envoyé qu'une fois.
   inviteTokenHash String?  @unique
   inviteSentAt    DateTime?
   lastReminderAt  DateTime?
 
-  /// Métadonnées de signature pour la preuve
+  /// Métadonnées (IP / UA) capturées à la vue, à la signature ou au refus.
   signedFromIp    String?
   signedUserAgent String?
 
