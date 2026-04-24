@@ -124,6 +124,9 @@ enum AuditAction {
   USER_UPDATED
   USER_DEACTIVATED
   USER_ROLE_CHANGED
+  USER_PROFILE_UPDATED
+  USER_AVATAR_UPDATED
+  USER_NOTIFICATIONS_UPDATED
 
   // Groupes
   GROUP_CREATED
@@ -156,6 +159,8 @@ enum AuditAction {
   SIGNER_REMOVED
   SIGNER_INVITED
   SIGNER_REMINDED
+  SIGNER_VIEWED
+  SIGNER_DECLINED
 
   // Templates
   TEMPLATE_CREATED
@@ -169,9 +174,15 @@ enum AuditAction {
   SAVED_SIGNATURE_DELETED
   SAVED_SIGNATURE_USED
 
-  // Archivage
+  // Preuves & archivage
+  EVIDENCE_DOWNLOADED
   ARCHIVE_EXPORTED
   ARCHIVE_RESTORED
+
+  // Contacts personnels
+  CONTACT_CREATED
+  CONTACT_UPDATED
+  CONTACT_DELETED
 }
 
 // =====================================================================
