@@ -71,8 +71,8 @@ function SentPage() {
     <AppShell>
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-semibold text-foreground">{t("sent.title")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("sent.subtitle")}</p>
+          <h2 className="text-2xl font-semibold text-foreground">{mounted ? t("sent.title") : ""}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{mounted ? t("sent.subtitle") : ""}</p>
         </div>
 
         {/* Filtres */}
