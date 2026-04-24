@@ -2,12 +2,22 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Globe } from "lucide-react";
+import { toast } from "sonner";
+import { z } from "zod";
+import { PasswordInput } from "@/components/PasswordInput";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/Logo";
 import { getSession, signup } from "@/lib/auth";
+import { getErrorMessage } from "@/lib/api";
+
+const searchSchema = z.object({
+  redirect: z.string().optional(),
+  email: z.string().optional(),
+});
 
 export const Route = createFileRoute("/signup")({
+  validateSearch: searchSchema,
   head: () => ({
     meta: [
       { title: "Créer un compte — Usign" },
@@ -20,19 +30,45 @@ export const Route = createFileRoute("/signup")({
 function SignupPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const { redirect, email: searchEmail } = Route.useSearch();
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => searchEmail ?? "");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const redirectAfterAuth = () => {
+    if (typeof window !== "undefined" && redirect?.startsWith("/")) {
+      window.location.assign(redirect);
+      return;
+    }
+
+    navigate({ to: "/" });
+  };
 
   useEffect(() => {
-    if (getSession()) navigate({ to: "/" });
-  }, [navigate]);
+    if (getSession()) {
+      redirectAfterAuth();
+    }
+  }, [navigate, redirect]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !email.trim() || password.length < 6) return;
-    signup(name.trim(), email.trim());
-    navigate({ to: "/" });
+    if (!name.trim() || !email.trim() || password.length < 6 || isSubmitting) return;
+    if (password !== confirmPassword) {
+      toast.error(t("auth.passwordsMismatch"));
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await signup(name.trim(), email.trim(), password, confirmPassword);
+      redirectAfterAuth();
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Création du compte impossible"));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const toggleLang = () => {
@@ -81,6 +117,7 @@ function SignupPage() {
                   required
                   autoFocus
                   maxLength={80}
+                  disabled={isSubmitting}
                   placeholder={t("auth.namePlaceholder")}
                 />
               </div>
@@ -94,6 +131,7 @@ function SignupPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   maxLength={255}
+                  disabled={isSubmitting}
                   placeholder="vous@entreprise.com"
                 />
               </div>
@@ -101,22 +139,39 @@ function SignupPage() {
                 <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   {t("auth.password")}
                 </label>
-                <Input
-                  type="password"
+                <PasswordInput
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   minLength={6}
-                  placeholder="6 caractères minimum"
+                  disabled={isSubmitting}
+                  placeholder={t("auth.passwordPlaceholder")}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  {t("auth.confirmPassword")}
+                </label>
+                <PasswordInput
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  disabled={isSubmitting}
+                  placeholder={t("auth.confirmPasswordPlaceholder")}
                 />
               </div>
             </div>
-            <Button type="submit" className="w-full bg-action text-action-foreground hover:opacity-90">
+            <Button type="submit" disabled={isSubmitting} className="w-full bg-action text-action-foreground hover:opacity-90">
               {t("auth.signupSubmit")}
             </Button>
             <p className="text-center text-sm text-muted-foreground">
               {t("auth.haveAccount")}{" "}
-              <Link to="/login" className="font-medium text-action hover:underline">
+              <Link
+                to="/login"
+                search={{ redirect, email: email.trim() || undefined }}
+                className="font-medium text-action hover:underline"
+              >
                 {t("auth.loginLink")}
               </Link>
             </p>

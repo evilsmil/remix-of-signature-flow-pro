@@ -1,6 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
+import { z } from "zod";
 import {
   CheckCircle2,
   ChevronLeft,
@@ -24,45 +26,111 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { DocumentPagePreview } from "@/components/DocumentPagePreview";
 import { SignaturePad, type SignatureResult } from "@/components/SignaturePad";
-import { useBinders } from "@/lib/store";
-import { getInitialsFromName, type SignatureField } from "@/lib/mockData";
+import { apiFetch, getErrorMessage } from "@/lib/api";
+import { getSession, logout } from "@/lib/auth";
+import { getSignerInvitation, useBinders, type BinderInvitation } from "@/lib/store";
+import { getInitialsFromName, type Binder, type SignatureField } from "@/lib/mockData";
 import { cn } from "@/lib/utils";
 
+const searchSchema = z.object({
+  token: z.string().optional(),
+});
+
 export const Route = createFileRoute("/sign/$binderId/$signerId")({
+  validateSearch: searchSchema,
   head: () => ({ meta: [{ title: "Signature — Usign" }] }),
   component: SignPage,
 });
 
 function SignPage() {
   const { binderId, signerId } = Route.useParams();
+  const { token } = Route.useSearch();
   const { t, i18n } = useTranslation();
-  const { binders, signAs, markSignerViewed, declineAs } = useBinders();
+  const { signAs, declineAs, markSignerViewed } = useBinders();
   const navigate = useNavigate();
-  const binder = binders.find((b) => b.id === binderId);
+  const session = getSession();
+  const [binder, setBinder] = useState<Binder | null>(null);
+  const [invitation, setInvitation] = useState<BinderInvitation | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const signer = binder?.signers?.find((s) => s.id === signerId);
   const [declineOpen, setDeclineOpen] = useState(false);
   const [declineReason, setDeclineReason] = useState("");
   const [declineErr, setDeclineErr] = useState<string | null>(null);
   const [declined, setDeclined] = useState(false);
 
-  // Log "viewed" once when the signer opens the page (only if pending).
+  useEffect(() => {
+    let active = true;
+
+    const load = async () => {
+      setIsLoading(true);
+      try {
+        const nextInvitation = token
+          ? await getSignerInvitation(binderId, signerId, token).catch(() => null)
+          : null;
+
+        if (active) {
+          setInvitation(nextInvitation);
+        }
+
+        if (!session) {
+          if (active) {
+            setBinder(null);
+          }
+          return;
+        }
+
+        const nextBinder = await apiFetch<Binder>(`/binders/${binderId}`);
+        if (active) {
+          setBinder(nextBinder);
+        }
+      } catch {
+        if (active) {
+          setBinder(null);
+        }
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void load();
+
+    return () => {
+      active = false;
+    };
+  }, [binderId, session, signerId, token]);
+
   useEffect(() => {
     if (binder && signer && signer.status !== "signed" && !signer.viewedAt) {
-      markSignerViewed(binder.id, signer.id);
+      void markSignerViewed(binder.id, signer.id)
+        .then((nextBinder) => setBinder(nextBinder))
+        .catch(() => undefined);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [binder?.id, signer?.id]);
 
-  const submitDecline = () => {
+  const redirectPath = invitation?.signPath
+    ?? (token ? `/sign/${binderId}/${signerId}?token=${encodeURIComponent(token)}` : `/sign/${binderId}/${signerId}`);
+  const mustSwitchAccount = Boolean(
+    session && invitation && session.email.toLowerCase() !== invitation.signerEmail.toLowerCase(),
+  );
+
+  const submitDecline = async () => {
     if (!binder || !signer) return;
     const reason = declineReason.trim();
     if (reason.length < 3) {
       setDeclineErr(t("decline.error"));
       return;
     }
-    declineAs(binder.id, signer.id, reason);
-    setDeclined(true);
-    setDeclineOpen(false);
+    try {
+      const nextBinder = await declineAs(binder.id, signer.id, reason);
+      setBinder(nextBinder);
+      setDeclined(true);
+      setDeclineOpen(false);
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Refus impossible"));
+    }
   };
 
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
@@ -93,6 +161,89 @@ function SignPage() {
     i18n.changeLanguage(next);
     if (typeof window !== "undefined") localStorage.setItem("usign.lang", next);
   };
+
+  if (isLoading) {
+    return (
+      <PublicShell onToggleLang={toggleLang}>
+        <div className="rounded-lg border bg-card p-10 text-center text-sm text-muted-foreground">
+          Chargement…
+        </div>
+      </PublicShell>
+    );
+  }
+
+  if (!session) {
+    if (!invitation) {
+      return (
+        <PublicShell onToggleLang={toggleLang}>
+          <div className="rounded-lg border bg-card p-10 text-center">
+            <p className="text-sm text-muted-foreground">{t("sign.notFound")}</p>
+          </div>
+        </PublicShell>
+      );
+    }
+
+    return (
+      <PublicShell onToggleLang={toggleLang}>
+        <Card>
+          <ShieldCheck className="mx-auto h-12 w-12 text-action" />
+          <h2 className="mt-3 text-xl font-semibold text-foreground">
+            {t("sign.authRequiredTitle")}
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {invitation.hasAccount
+              ? t("sign.authRequiredExisting", { email: invitation.signerEmail })
+              : t("sign.authRequiredNew", { email: invitation.signerEmail })}
+          </p>
+          <p className="mt-2 text-sm text-foreground">{invitation.binderName}</p>
+          <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
+            {invitation.hasAccount ? (
+              <Link
+                to="/login"
+                search={{ redirect: redirectPath, email: invitation.signerEmail }}
+                className="inline-flex h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-medium text-action-foreground hover:opacity-90"
+              >
+                {t("auth.submit")}
+              </Link>
+            ) : (
+              <Link
+                to="/signup"
+                search={{ redirect: redirectPath, email: invitation.signerEmail }}
+                className="inline-flex h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-medium text-action-foreground hover:opacity-90"
+              >
+                {t("auth.signupSubmit")}
+              </Link>
+            )}
+          </div>
+        </Card>
+      </PublicShell>
+    );
+  }
+
+  if (mustSwitchAccount) {
+    return (
+      <PublicShell onToggleLang={toggleLang}>
+        <Card>
+          <XCircle className="mx-auto h-12 w-12 text-destructive" />
+          <h2 className="mt-3 text-xl font-semibold text-foreground">
+            {t("sign.wrongAccountTitle")}
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {t("sign.wrongAccountSubtitle", { email: invitation?.signerEmail ?? "" })}
+          </p>
+          <Button
+            className="mt-5 bg-action text-action-foreground hover:opacity-90"
+            onClick={async () => {
+              await logout();
+              window.location.assign(`/login?redirect=${encodeURIComponent(redirectPath)}&email=${encodeURIComponent(invitation?.signerEmail ?? "")}`);
+            }}
+          >
+            {t("auth.loginLink")}
+          </Button>
+        </Card>
+      </PublicShell>
+    );
+  }
 
   if (!binder || !signer) {
     return (
@@ -166,7 +317,7 @@ function SignPage() {
     (f) => f.documentId === activeDocId && f.page === activePage,
   );
 
-  const finalize = () => {
+  const finalize = async () => {
     // Use the most recent applied "signature" entry as canonical, but pass
     // per-field overrides so that "initial" zones keep their initials text.
     const entries = Object.entries(pendingSignatures);
@@ -184,12 +335,17 @@ function SignPage() {
     for (const [fid, res] of entries) {
       fieldOverrides[fid] = { method: res.method, signatureData: res.data };
     }
-    signAs(binder.id, signer.id, {
-      method: canonical.method,
-      signatureData: canonical.data,
-      fieldOverrides,
-    });
-    setDone(true);
+    try {
+      const nextBinder = await signAs(binder.id, signer.id, {
+        method: canonical.method,
+        signatureData: canonical.data,
+        fieldOverrides,
+      });
+      setBinder(nextBinder);
+      setDone(true);
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Signature impossible"));
+    }
   };
 
   return (
@@ -528,7 +684,7 @@ function SignPage() {
               {t("decline.cancel")}
             </Button>
             <Button
-              onClick={submitDecline}
+                  onClick={() => void submitDecline()}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               <XCircle className="mr-2 h-4 w-4" />
@@ -554,6 +710,7 @@ function PublicShell({
       <header className="flex h-16 items-center justify-between border-b bg-card px-6">
         <Logo />
         <button
+          type="button"
           onClick={onToggleLang}
           className="rounded-md border bg-background px-3 py-1.5 text-xs font-semibold uppercase text-foreground hover:bg-accent"
         >

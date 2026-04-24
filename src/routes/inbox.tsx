@@ -6,7 +6,7 @@ import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { useBinders } from "@/lib/store";
 import { getSession } from "@/lib/auth";
-import { getMySignature, type SavedSignature } from "@/lib/mySignature";
+import { useMySignature } from "@/lib/mySignature";
 import { formatDateTime } from "@/lib/format";
 import { getInitialsFromName, type Binder, type BinderSigner } from "@/lib/mockData";
 
@@ -35,14 +35,7 @@ function InboxPage() {
   const navigate = useNavigate();
   const session = getSession();
   const email = session?.email ?? "";
-
-  const [saved, setSaved] = useState<SavedSignature | null>(() => getMySignature(email));
-
-  useEffect(() => {
-    const sync = () => setSaved(getMySignature(email));
-    window.addEventListener("usign:mySignature", sync);
-    return () => window.removeEventListener("usign:mySignature", sync);
-  }, [email]);
+  const { saved, isLoading: isSignatureLoading } = useMySignature();
 
   const items: InboxItem[] = useMemo(() => {
     if (!email) return [];
@@ -124,7 +117,7 @@ function InboxPage() {
               )}
             </div>
           </div>
-        ) : (
+        ) : !isSignatureLoading ? (
           <div className="flex flex-wrap items-center gap-3 rounded-lg border border-dashed bg-muted/30 p-3 text-sm">
             <AlertCircle className="h-4 w-4 text-muted-foreground" />
             <span className="text-muted-foreground">{t("inbox.noSavedSignature")}</span>
@@ -135,7 +128,7 @@ function InboxPage() {
               {t("inbox.goToMySignature")} →
             </Link>
           </div>
-        )}
+        ) : null}
 
         {items.length === 0 ? (
           <div className="flex flex-col items-center gap-3 rounded-lg border bg-card p-12 text-center">

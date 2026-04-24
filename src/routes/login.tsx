@@ -2,12 +2,22 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Globe } from "lucide-react";
+import { toast } from "sonner";
+import { z } from "zod";
+import { PasswordInput } from "@/components/PasswordInput";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/Logo";
 import { getSession, login } from "@/lib/auth";
+import { getErrorMessage } from "@/lib/api";
+
+const searchSchema = z.object({
+  redirect: z.string().optional(),
+  email: z.string().optional(),
+});
 
 export const Route = createFileRoute("/login")({
+  validateSearch: searchSchema,
   head: () => ({
     meta: [
       { title: "Connexion — Usign" },
@@ -20,18 +30,39 @@ export const Route = createFileRoute("/login")({
 function LoginPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
+  const { redirect, email: searchEmail } = Route.useSearch();
+  const [email, setEmail] = useState(() => searchEmail ?? "");
   const [password, setPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const redirectAfterAuth = () => {
+    if (typeof window !== "undefined" && redirect?.startsWith("/")) {
+      window.location.assign(redirect);
+      return;
+    }
+
+    navigate({ to: "/" });
+  };
 
   useEffect(() => {
-    if (getSession()) navigate({ to: "/" });
-  }, [navigate]);
+    if (getSession()) {
+      redirectAfterAuth();
+    }
+  }, [navigate, redirect]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !password) return;
-    login(email.trim());
-    navigate({ to: "/" });
+    if (!email.trim() || !password || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      await login(email.trim(), password);
+      redirectAfterAuth();
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Connexion impossible"));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const toggleLang = () => {
@@ -79,6 +110,7 @@ function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   autoFocus
+                  disabled={isSubmitting}
                   placeholder="vous@entreprise.com"
                 />
               </div>
@@ -86,21 +118,30 @@ function LoginPage() {
                 <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   {t("auth.password")}
                 </label>
-                <Input
-                  type="password"
+                <PasswordInput
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  disabled={isSubmitting}
                   placeholder="••••••••"
                 />
               </div>
+              <div className="text-right">
+                <Link to="/forgot-password" className="text-sm font-medium text-action hover:underline">
+                  {t("auth.forgotPasswordLink")}
+                </Link>
+              </div>
             </div>
-            <Button type="submit" className="w-full bg-action text-action-foreground hover:opacity-90">
+            <Button type="submit" disabled={isSubmitting} className="w-full bg-action text-action-foreground hover:opacity-90">
               {t("auth.submit")}
             </Button>
             <p className="text-center text-sm text-muted-foreground">
               {t("auth.noAccount")}{" "}
-              <Link to="/signup" className="font-medium text-action hover:underline">
+              <Link
+                to="/signup"
+                search={{ redirect, email: email.trim() || undefined }}
+                className="font-medium text-action hover:underline"
+              >
                 {t("auth.signupLink")}
               </Link>
             </p>

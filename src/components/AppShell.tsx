@@ -3,7 +3,7 @@ import { Home, FileText, FilePlus2, Users, LogOut, Settings, Menu, Globe, Inbox,
 import { useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
 import { Logo } from "./Logo";
-import { getSession, logout, type Session } from "@/lib/auth";
+import { getSession, logout, refreshSession, type Session } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -56,6 +56,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const sync = () => setSession(getSession());
     sync();
+    void refreshSession()
+      .then((nextSession) => setSession(nextSession))
+      .catch(() => undefined);
     window.addEventListener("usign:auth", sync);
     window.addEventListener("goodflag:auth", sync);
     return () => {
@@ -106,8 +109,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     localStorage.setItem("usign.lang", next);
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate({ to: "/login" });
   };
 

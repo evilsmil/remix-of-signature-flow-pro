@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { CheckCircle2, Circle, PenLine, UserPlus, FilePlus2, UserCog, X, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getSession } from "@/lib/auth";
-import { getMySignature } from "@/lib/mySignature";
+import { useMySignature } from "@/lib/mySignature";
 import { useBinders, useContacts } from "@/lib/store";
 import {
   dismissOnboarding,
@@ -32,9 +32,9 @@ export function OnboardingChecklist({
   const navigate = useNavigate();
   const { binders } = useBinders();
   const { contacts } = useContacts();
+  const { saved, isLoading: isSignatureLoading } = useMySignature();
   const [mounted, setMounted] = useState(false);
   const [dismissed, setDismissed] = useState(false);
-  const [hasSig, setHasSig] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
   const [profileDone, setProfileDone] = useState(false);
 
@@ -43,7 +43,6 @@ export function OnboardingChecklist({
     const e = s?.email ?? null;
     setEmail(e);
     setDismissed(isOnboardingDismissed(e));
-    setHasSig(Boolean(getMySignature(e)));
     setProfileDone(Boolean(s?.phone || s?.photo));
   };
 
@@ -52,14 +51,14 @@ export function OnboardingChecklist({
     refresh();
     const sync = () => refresh();
     window.addEventListener("goodflag:auth", sync);
-    window.addEventListener("usign:mySignature", sync);
     window.addEventListener("usign:onboarding", sync);
     return () => {
       window.removeEventListener("goodflag:auth", sync);
-      window.removeEventListener("usign:mySignature", sync);
       window.removeEventListener("usign:onboarding", sync);
     };
   }, []);
+
+  const hasSig = Boolean(saved);
 
   const ownEmail = (email ?? "").toLowerCase();
   const ownsBinder = useMemo(
@@ -99,7 +98,7 @@ export function OnboardingChecklist({
   const doneCount = steps.filter((s) => s.done).length;
   const allDone = doneCount === total;
 
-  if (!mounted || !email || dismissed) return null;
+  if (!mounted || !email || dismissed || isSignatureLoading) return null;
   if (allDone) return null; // Auto-hide once everything is done.
 
   return (

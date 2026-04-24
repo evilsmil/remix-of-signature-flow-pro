@@ -1,25 +1,67 @@
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
-  initialBinders,
-  initialContacts,
-  mockIp,
-  type AuditEvent,
-  type Binder,
-  type BinderDocument,
-  type BinderAttachment,
-  type BinderSigner,
-  type BinderNotifications,
-  type SignatureField,
-  type Contact,
+  apiFetch,
+  hasStoredAuthToken,
+  notifyStoreChange,
+} from "./api";
+import type {
+  AuditEvent,
+  Binder,
+  BinderAttachment,
+  BinderDocument,
+  BinderNotifications,
+  BinderSigner,
+  Contact,
+  SignatureField,
 } from "./mockData";
 
-const BINDER_KEY = "goodflag.binders";
-const CONTACT_KEY = "goodflag.contacts";
+const BINDER_CACHE_KEY = "usign.binders.cache";
+const CONTACT_CACHE_KEY = "usign.contacts.cache";
+const BINDER_EVENT = "binders";
+const CONTACT_EVENT = "contacts";
 
-function load<T>(key: string, fallback: T): T {
+type CreateBinderInput = {
+  name: string;
+  description?: string;
+  group?: string;
+  ownerName: string;
+  ownerEmail: string;
+  ownerInitials: string;
+  documents?: BinderDocument[];
+  attachments?: BinderAttachment[];
+  signers?: BinderSigner[];
+  signatureFields?: SignatureField[];
+  notifications?: BinderNotifications;
+  consolidation?: boolean;
+};
+
+type SignPayload = {
+  method: BinderSigner["signatureMethod"];
+  signatureData: string;
+  fieldOverrides?: Record<
+    string,
+    { method: BinderSigner["signatureMethod"]; signatureData: string }
+  >;
+};
+
+export type BinderInvitation = {
+  binderId: string;
+  signerId: string;
+  binderName: string;
+  signerName: string;
+  signerEmail: string;
+  requesterName: string;
+  requesterEmail: string;
+  hasAccount: boolean;
+  status: BinderSigner["status"];
+  signPath: string;
+};
+
+function readCache<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
   const raw = localStorage.getItem(key);
   if (!raw) return fallback;
+
   try {
     return JSON.parse(raw) as T;
   } catch {
@@ -27,379 +69,314 @@ function load<T>(key: string, fallback: T): T {
   }
 }
 
-function save<T>(key: string, value: T) {
+function writeCache<T>(key: string, value: T) {
+  if (typeof window === "undefined") return;
   localStorage.setItem(key, JSON.stringify(value));
-  window.dispatchEvent(new CustomEvent("goodflag:store", { detail: key }));
+}
+
+function clearCache(key: string) {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(key);
+}
+
+function sortBinders(items: Binder[]) {
+  return [...items].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+}
+
+function sortContacts(items: Contact[]) {
+  return [...items].sort((left, right) => {
+    const leftName = `${left.firstName} ${left.lastName}`.trim().toLowerCase();
+    const rightName = `${right.firstName} ${right.lastName}`.trim().toLowerCase();
+    return leftName.localeCompare(rightName);
+  });
+}
+
+function replaceBinderCache(nextBinder: Binder) {
+  const current = readCache<Binder[]>(BINDER_CACHE_KEY, []);
+  const next = sortBinders([nextBinder, ...current.filter((binder) => binder.id !== nextBinder.id)]);
+  writeCache(BINDER_CACHE_KEY, next);
+  return next;
+}
+
+function removeBinderFromCache(id: string) {
+  const next = readCache<Binder[]>(BINDER_CACHE_KEY, []).filter((binder) => binder.id !== id);
+  writeCache(BINDER_CACHE_KEY, next);
+  return next;
+}
+
+function replaceContactsCache(nextContact: Contact) {
+  const current = readCache<Contact[]>(CONTACT_CACHE_KEY, []);
+  const next = sortContacts([
+    nextContact,
+    ...current.filter((contact) => contact.id !== nextContact.id),
+  ]);
+  writeCache(CONTACT_CACHE_KEY, next);
+  return next;
+}
+
+function removeContactFromCache(id: string) {
+  const next = readCache<Contact[]>(CONTACT_CACHE_KEY, []).filter((contact) => contact.id !== id);
+  writeCache(CONTACT_CACHE_KEY, next);
+  return next;
+}
+
+async function fetchBinders() {
+  if (!hasStoredAuthToken()) {
+    clearCache(BINDER_CACHE_KEY);
+    return [] as Binder[];
+  }
+
+  const binders = await apiFetch<Binder[]>("/binders");
+  const next = sortBinders(binders);
+  writeCache(BINDER_CACHE_KEY, next);
+  return next;
+}
+
+async function fetchContacts() {
+  if (!hasStoredAuthToken()) {
+    clearCache(CONTACT_CACHE_KEY);
+    return [] as Contact[];
+  }
+
+  const contacts = await apiFetch<Contact[]>("/contacts");
+  const next = sortContacts(contacts);
+  writeCache(CONTACT_CACHE_KEY, next);
+  return next;
+}
+
+function emitStore(detail: string) {
+  notifyStoreChange(detail);
+}
+
+export async function getPublicBinder(binderId: string, signerId: string) {
+  return apiFetch<Binder>(`/public/binders/${binderId}/signers/${signerId}`, {
+    skipAuth: true,
+  });
+}
+
+export async function getSignerInvitation(
+  binderId: string,
+  signerId: string,
+  token: string,
+) {
+  return apiFetch<BinderInvitation>(
+    `/public/binders/${binderId}/signers/${signerId}/invitation?token=${encodeURIComponent(token)}`,
+    {
+      skipAuth: true,
+    },
+  );
+}
+
+async function mutatePublicBinder(path: string, body?: Record<string, unknown>) {
+  const binder = await apiFetch<Binder>(path, {
+    method: "POST",
+    skipAuth: true,
+    body: JSON.stringify(body ?? {}),
+  });
+
+  if (hasStoredAuthToken()) {
+    replaceBinderCache(binder);
+    emitStore(BINDER_EVENT);
+  }
+
+  return binder;
+}
+
+export async function markPublicSignerViewed(binderId: string, signerId: string) {
+  return mutatePublicBinder(`/public/binders/${binderId}/signers/${signerId}/view`);
+}
+
+export async function declinePublicSigner(binderId: string, signerId: string, reason: string) {
+  return mutatePublicBinder(`/public/binders/${binderId}/signers/${signerId}/decline`, {
+    reason,
+  });
+}
+
+export async function signPublicSigner(
+  binderId: string,
+  signerId: string,
+  payload: SignPayload,
+) {
+  return mutatePublicBinder(`/public/binders/${binderId}/signers/${signerId}/sign`, payload);
 }
 
 export function useBinders() {
-  const [binders, setBinders] = useState<Binder[]>(initialBinders);
+  const [binders, setBinders] = useState<Binder[]>(() =>
+    hasStoredAuthToken() ? readCache(BINDER_CACHE_KEY, []) : [],
+  );
 
   useEffect(() => {
-    setBinders(load(BINDER_KEY, initialBinders));
-    const onChange = (e: Event) => {
-      if ((e as CustomEvent).detail === BINDER_KEY) {
-        setBinders(load(BINDER_KEY, initialBinders));
+    let active = true;
+
+    const sync = async () => {
+      try {
+        const next = await fetchBinders();
+        if (active) {
+          setBinders(next);
+        }
+      } catch {
+        if (!active) return;
+        if (!hasStoredAuthToken()) {
+          setBinders([]);
+        }
       }
     };
-    window.addEventListener("goodflag:store", onChange);
-    return () => window.removeEventListener("goodflag:store", onChange);
+
+    void sync();
+
+    const onStoreChange = (event: Event) => {
+      if ((event as CustomEvent<string>).detail === BINDER_EVENT) {
+        void sync();
+      }
+    };
+
+    const onAuthChange = () => {
+      if (!hasStoredAuthToken()) {
+        setBinders([]);
+        clearCache(BINDER_CACHE_KEY);
+        return;
+      }
+
+      void sync();
+    };
+
+    window.addEventListener("goodflag:store", onStoreChange);
+    window.addEventListener("goodflag:auth", onAuthChange);
+
+    return () => {
+      active = false;
+      window.removeEventListener("goodflag:store", onStoreChange);
+      window.removeEventListener("goodflag:auth", onAuthChange);
+    };
   }, []);
 
-  const create = useCallback(
-    (data: {
-      name: string;
-      description?: string;
-      group?: string;
-      ownerName: string;
-      ownerEmail: string;
-      ownerInitials: string;
-      documents?: BinderDocument[];
-      attachments?: BinderAttachment[];
-      signers?: BinderSigner[];
-      signatureFields?: SignatureField[];
-      notifications?: BinderNotifications;
-      consolidation?: boolean;
-    }) => {
-      const now = new Date().toISOString();
-      const id = `b_${Date.now()}`;
-      const initialEvent: AuditEvent = {
-        id: `ev_${Date.now()}`,
-        kind: "binder.created",
-        at: now,
-        actorName: data.ownerName,
-        actorEmail: data.ownerEmail,
-        ip: mockIp(),
-      };
-      const next: Binder = {
-        id,
+  const create = useCallback(async (data: CreateBinderInput) => {
+    const binder = await apiFetch<Binder>("/binders", {
+      method: "POST",
+      body: JSON.stringify({
         name: data.name,
         description: data.description,
-        ownerName: data.ownerName,
-        ownerEmail: data.ownerEmail,
-        ownerInitials: data.ownerInitials,
-        group: data.group?.trim() || "Utilisateurs Principaux",
-        createdAt: now,
-        updatedAt: now,
-        status: "draft",
-        progress: 0,
-        consolidation: data.consolidation ?? false,
-        documents: data.documents ?? [],
-        attachments: data.attachments ?? [],
-        signers: (data.signers ?? []).map((s) => ({ ...s, status: s.status ?? "pending" })),
-        signatureFields: data.signatureFields ?? [],
-        notifications: data.notifications ?? { onStart: true, onComplete: true, reminders: false },
-        auditEvents: [initialEvent],
-      };
-      const list = [next, ...load<Binder[]>(BINDER_KEY, initialBinders)];
-      save(BINDER_KEY, list);
-      return next;
-    },
-    [],
-  );
+        group: data.group,
+        documents: data.documents,
+        attachments: data.attachments,
+        signers: data.signers,
+        signatureFields: data.signatureFields,
+        notifications: data.notifications,
+        consolidation: data.consolidation,
+      }),
+    });
 
-  const remove = useCallback((id: string) => {
-    const list = load<Binder[]>(BINDER_KEY, initialBinders).filter((b) => b.id !== id);
-    save(BINDER_KEY, list);
+    const next = replaceBinderCache(binder);
+    setBinders(next);
+    emitStore(BINDER_EVENT);
+    return binder;
   }, []);
 
-  const update = useCallback((id: string, patch: Partial<Binder>) => {
-    const list = load<Binder[]>(BINDER_KEY, initialBinders).map((b) =>
-      b.id === id ? { ...b, ...patch, updatedAt: new Date().toISOString() } : b,
-    );
-    save(BINDER_KEY, list);
+  const remove = useCallback(async (id: string) => {
+    await apiFetch<{ ok: boolean }>(`/binders/${id}`, { method: "DELETE" });
+    const next = removeBinderFromCache(id);
+    setBinders(next);
+    emitStore(BINDER_EVENT);
   }, []);
 
-  /** Append a single audit event to a binder. */
+  const update = useCallback(async (id: string, patch: Partial<Binder>) => {
+    const binder = await apiFetch<Binder>(`/binders/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    });
+
+    const next = replaceBinderCache(binder);
+    setBinders(next);
+    emitStore(BINDER_EVENT);
+    return binder;
+  }, []);
+
   const appendEvent = useCallback(
-    (binderId: string, event: Omit<AuditEvent, "id" | "at"> & { at?: string }) => {
-      const now = event.at ?? new Date().toISOString();
-      const list = load<Binder[]>(BINDER_KEY, initialBinders).map((b) => {
-        if (b.id !== binderId) return b;
-        const ev: AuditEvent = {
-          id: `ev_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-          at: now,
-          ...event,
-        };
-        return {
-          ...b,
-          auditEvents: [...(b.auditEvents ?? []), ev],
-          updatedAt: now,
-        };
-      });
-      save(BINDER_KEY, list);
-    },
+    async (_binderId: string, _event: Omit<AuditEvent, "id" | "at"> & { at?: string }) => {},
     [],
   );
 
-  /**
-   * Mark a binder as started (sent to signers). Logs invitation events for
-   * every pending signer so the audit trail shows when each one was notified.
-   */
-  const startBinder = useCallback((binderId: string) => {
-    const list = load<Binder[]>(BINDER_KEY, initialBinders);
-    const now = new Date().toISOString();
-    const next = list.map((b) => {
-      if (b.id !== binderId) return b;
-      const events: AuditEvent[] = [
-        ...(b.auditEvents ?? []),
-        {
-          id: `ev_${Date.now()}_s`,
-          kind: "binder.started",
-          at: now,
-          actorName: b.ownerName,
-          actorEmail: b.ownerEmail,
-          ip: mockIp(),
-        },
-        ...(b.signers ?? []).map<AuditEvent>((s, i) => ({
-          id: `ev_${Date.now()}_inv_${i}`,
-          kind: "signer.invited",
-          at: now,
-          actorName: b.ownerName,
-          actorEmail: b.ownerEmail,
-          targetName: s.name,
-          targetEmail: s.email,
-          ip: mockIp(),
-        })),
-      ];
-      return {
-        ...b,
-        status: "started" as const,
-        startedAt: now,
-        updatedAt: now,
-        auditEvents: events,
-      };
+  const startBinder = useCallback(async (binderId: string) => {
+    const binder = await apiFetch<Binder>(`/binders/${binderId}/start`, {
+      method: "POST",
+      body: JSON.stringify({}),
     });
-    save(BINDER_KEY, next);
+
+    const next = replaceBinderCache(binder);
+    setBinders(next);
+    emitStore(BINDER_EVENT);
+    return binder;
   }, []);
 
-  /** Mark that a signer has opened the signing page (only logs once). */
-  const markSignerViewed = useCallback((binderId: string, signerId: string) => {
-    const list = load<Binder[]>(BINDER_KEY, initialBinders);
-    const now = new Date().toISOString();
-    const next = list.map((b) => {
-      if (b.id !== binderId) return b;
-      const signer = b.signers?.find((s) => s.id === signerId);
-      if (!signer || signer.viewedAt || signer.status === "signed") return b;
-      const ip = mockIp();
-      const signers = (b.signers ?? []).map((s) =>
-        s.id === signerId ? { ...s, viewedAt: now, ip: s.ip ?? ip } : s,
-      );
-      const events: AuditEvent[] = [
-        ...(b.auditEvents ?? []),
-        {
-          id: `ev_${Date.now()}_v`,
-          kind: "signer.viewed",
-          at: now,
-          actorName: signer.name,
-          actorEmail: signer.email,
-          ip,
-        },
-      ];
-      return { ...b, signers, auditEvents: events, updatedAt: now };
+  const markSignerViewed = useCallback(async (binderId: string, signerId: string) => {
+    const binder = await apiFetch<Binder>(`/binders/${binderId}/signers/${signerId}/view`, {
+      method: "POST",
+      body: JSON.stringify({}),
     });
-    save(BINDER_KEY, next);
+
+    const next = replaceBinderCache(binder);
+    setBinders(next);
+    emitStore(BINDER_EVENT);
+
+    return binder;
   }, []);
 
-  /** A signer refuses to sign and provides a reason. */
-  const declineAs = useCallback(
-    (binderId: string, signerId: string, reason: string) => {
-      const list = load<Binder[]>(BINDER_KEY, initialBinders);
-      const now = new Date().toISOString();
-      const ip = mockIp();
-      const next = list.map((b) => {
-        if (b.id !== binderId) return b;
-        const signer = b.signers?.find((s) => s.id === signerId);
-        if (!signer) return b;
-        const signers = (b.signers ?? []).map((s) =>
-          s.id === signerId
-            ? {
-                ...s,
-                status: "declined" as const,
-                declinedAt: now,
-                declinedReason: reason,
-                ip,
-              }
-            : s,
-        );
-        const events: AuditEvent[] = [
-          ...(b.auditEvents ?? []),
-          {
-            id: `ev_${Date.now()}_d`,
-            kind: "signer.declined",
-            at: now,
-            actorName: signer.name,
-            actorEmail: signer.email,
-            ip,
-            message: reason,
-          },
-          {
-            id: `ev_${Date.now()}_dst`,
-            kind: "binder.stopped",
-            at: now,
-            actorName: signer.name,
-            actorEmail: signer.email,
-            ip,
-            message: `Refus de ${signer.name}`,
-          },
-        ];
-        return {
-          ...b,
-          signers,
-          auditEvents: events,
-          status: "stopped" as const,
-          stoppedAt: now,
-          stoppedReason: `${signer.name} a refusé : ${reason}`,
-          updatedAt: now,
-        };
-      });
-      save(BINDER_KEY, next);
-    },
-    [],
-  );
+  const declineAs = useCallback(async (binderId: string, signerId: string, reason: string) => {
+    const binder = await apiFetch<Binder>(`/binders/${binderId}/signers/${signerId}/decline`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    });
 
-  /** Send a reminder to a pending signer (audit only). */
+    const next = replaceBinderCache(binder);
+    setBinders(next);
+    emitStore(BINDER_EVENT);
+
+    return binder;
+  }, []);
+
   const remindSigner = useCallback(
-    (binderId: string, signerId: string, actor: { name: string; email: string }) => {
-      const list = load<Binder[]>(BINDER_KEY, initialBinders);
-      const now = new Date().toISOString();
-      const next = list.map((b) => {
-        if (b.id !== binderId) return b;
-        const signer = b.signers?.find((s) => s.id === signerId);
-        if (!signer || signer.status === "signed") return b;
-        const events: AuditEvent[] = [
-          ...(b.auditEvents ?? []),
-          {
-            id: `ev_${Date.now()}_r`,
-            kind: "signer.reminded",
-            at: now,
-            actorName: actor.name,
-            actorEmail: actor.email,
-            targetName: signer.name,
-            targetEmail: signer.email,
-            ip: mockIp(),
-          },
-        ];
-        return { ...b, auditEvents: events, updatedAt: now };
+    async (binderId: string, signerId: string, _actor: { name: string; email: string }) => {
+      const binder = await apiFetch<Binder>(`/binders/${binderId}/signers/${signerId}/remind`, {
+        method: "POST",
+        body: JSON.stringify({}),
       });
-      save(BINDER_KEY, next);
+
+      const next = replaceBinderCache(binder);
+      setBinders(next);
+      emitStore(BINDER_EVENT);
+      return binder;
     },
     [],
   );
 
-  /**
-   * Record a signature for a given signer: marks the signer as signed,
-   * fills in all their signature fields, recomputes progress and status.
-   *
-   * If `fieldOverrides` is provided, each field id present uses its own
-   * (method, signatureData) pair instead of the canonical one. This is used
-   * to mix full signatures and "initial" (paraphe) zones in the same pass.
-   */
-  const signAs = useCallback(
-    (
-      binderId: string,
-      signerId: string,
-      payload: {
-        method: BinderSigner["signatureMethod"];
-        signatureData: string;
-        fieldOverrides?: Record<
-          string,
-          { method: BinderSigner["signatureMethod"]; signatureData: string }
-        >;
-      },
-    ) => {
-      const list = load<Binder[]>(BINDER_KEY, initialBinders);
-      const now = new Date().toISOString();
-      const ip = mockIp();
-      const next = list.map((b) => {
-        if (b.id !== binderId) return b;
-        const previousSigner = b.signers?.find((s) => s.id === signerId);
-        const signers = (b.signers ?? []).map((s) =>
-          s.id === signerId
-            ? {
-                ...s,
-                status: "signed" as const,
-                signedAt: now,
-                signatureMethod: payload.method,
-                signatureData: payload.signatureData,
-                ip: s.ip ?? ip,
-              }
-            : s,
-        );
-        const fields = (b.signatureFields ?? []).map((f) => {
-          if (f.signerId !== signerId) return f;
-          const override = payload.fieldOverrides?.[f.id];
-          return {
-            ...f,
-            signedAt: now,
-            signatureData: override?.signatureData ?? payload.signatureData,
-          };
-        });
-        const total = signers.length || 1;
-        const signedCount = signers.filter((s) => s.status === "signed").length;
-        const progress = Math.round((signedCount / total) * 100);
-        const allSigned = signers.length > 0 && signedCount === signers.length;
-        const events: AuditEvent[] = [...(b.auditEvents ?? [])];
-        events.push({
-          id: `ev_${Date.now()}_sg`,
-          kind: "signer.signed",
-          at: now,
-          actorName: previousSigner?.name,
-          actorEmail: previousSigner?.email,
-          ip,
-          message: `Méthode : ${payload.method ?? "drawn"}`,
-        });
-        if (allSigned) {
-          events.push({
-            id: `ev_${Date.now()}_done`,
-            kind: "binder.completed",
-            at: now,
-            ip,
-          });
-        }
-        return {
-          ...b,
-          signers,
-          signatureFields: fields,
-          progress,
-          startedAt: b.startedAt ?? now,
-          completedAt: allSigned ? now : b.completedAt,
-          status: allSigned ? ("finished" as const) : ("started" as const),
-          updatedAt: now,
-          auditEvents: events,
-        };
-      });
-      save(BINDER_KEY, next);
-    },
-    [],
-  );
+  const signAs = useCallback(async (binderId: string, signerId: string, payload: SignPayload) => {
+    const binder = await apiFetch<Binder>(`/binders/${binderId}/signers/${signerId}/sign`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
 
-  /** Audit-only: record an evidence download (PDF signé / certificat). */
+    const next = replaceBinderCache(binder);
+    setBinders(next);
+    emitStore(BINDER_EVENT);
+
+    return binder;
+  }, []);
+
   const recordDownload = useCallback(
-    (
+    async (
       binderId: string,
-      actor: { name?: string; email?: string },
+      _actor: { name?: string; email?: string },
       what: "signed_pdf" | "certificate",
     ) => {
-      const list = load<Binder[]>(BINDER_KEY, initialBinders);
-      const now = new Date().toISOString();
-      const next = list.map((b) => {
-        if (b.id !== binderId) return b;
-        const events: AuditEvent[] = [
-          ...(b.auditEvents ?? []),
-          {
-            id: `ev_${Date.now()}_dl`,
-            kind: "evidence.downloaded",
-            at: now,
-            actorName: actor.name,
-            actorEmail: actor.email,
-            ip: mockIp(),
-            message: what === "signed_pdf" ? "PDF signé" : "Certificat de preuve",
-          },
-        ];
-        return { ...b, auditEvents: events };
+      const binder = await apiFetch<Binder>(`/binders/${binderId}/downloads`, {
+        method: "POST",
+        body: JSON.stringify({ what }),
       });
-      save(BINDER_KEY, next);
+
+      const next = replaceBinderCache(binder);
+      setBinders(next);
+      emitStore(BINDER_EVENT);
+      return binder;
     },
     [],
   );
@@ -419,30 +396,116 @@ export function useBinders() {
   };
 }
 
-export function useContacts() {
-  const [contacts, setContacts] = useState<Contact[]>(initialContacts);
+export function usePublicBinder(binderId: string, signerId: string) {
+  const [binder, setBinder] = useState<Binder | null>(() =>
+    readCache<Binder[]>(BINDER_CACHE_KEY, []).find((entry) => entry.id === binderId) ?? null,
+  );
+  const [isLoading, setIsLoading] = useState(true);
+
+  const refresh = useCallback(async () => {
+    const next = await getPublicBinder(binderId, signerId);
+    setBinder(next);
+    return next;
+  }, [binderId, signerId]);
 
   useEffect(() => {
-    setContacts(load(CONTACT_KEY, initialContacts));
-    const onChange = (e: Event) => {
-      if ((e as CustomEvent).detail === CONTACT_KEY) {
-        setContacts(load(CONTACT_KEY, initialContacts));
+    let active = true;
+
+    const load = async () => {
+      setIsLoading(true);
+      try {
+        const next = await getPublicBinder(binderId, signerId);
+        if (active) {
+          setBinder(next);
+        }
+      } catch {
+        if (active) {
+          setBinder(null);
+        }
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
       }
     };
-    window.addEventListener("goodflag:store", onChange);
-    return () => window.removeEventListener("goodflag:store", onChange);
+
+    void load();
+
+    return () => {
+      active = false;
+    };
+  }, [binderId, signerId]);
+
+  return { binder, isLoading, refresh };
+}
+
+export function useContacts() {
+  const [contacts, setContacts] = useState<Contact[]>(() =>
+    hasStoredAuthToken() ? readCache(CONTACT_CACHE_KEY, []) : [],
+  );
+
+  useEffect(() => {
+    let active = true;
+
+    const sync = async () => {
+      try {
+        const next = await fetchContacts();
+        if (active) {
+          setContacts(next);
+        }
+      } catch {
+        if (!active) return;
+        if (!hasStoredAuthToken()) {
+          setContacts([]);
+        }
+      }
+    };
+
+    void sync();
+
+    const onStoreChange = (event: Event) => {
+      if ((event as CustomEvent<string>).detail === CONTACT_EVENT) {
+        void sync();
+      }
+    };
+
+    const onAuthChange = () => {
+      if (!hasStoredAuthToken()) {
+        setContacts([]);
+        clearCache(CONTACT_CACHE_KEY);
+        return;
+      }
+
+      void sync();
+    };
+
+    window.addEventListener("goodflag:store", onStoreChange);
+    window.addEventListener("goodflag:auth", onAuthChange);
+
+    return () => {
+      active = false;
+      window.removeEventListener("goodflag:store", onStoreChange);
+      window.removeEventListener("goodflag:auth", onAuthChange);
+    };
   }, []);
 
-  const create = useCallback((c: Omit<Contact, "id">) => {
-    const next: Contact = { ...c, id: `c_${Date.now()}` };
-    const list = [next, ...load<Contact[]>(CONTACT_KEY, initialContacts)];
-    save(CONTACT_KEY, list);
-    return next;
+  const create = useCallback(async (contact: Omit<Contact, "id">) => {
+    const nextContact = await apiFetch<Contact>("/contacts", {
+      method: "POST",
+      body: JSON.stringify(contact),
+    });
+
+    const next = replaceContactsCache(nextContact);
+    setContacts(next);
+    emitStore(CONTACT_EVENT);
+    return nextContact;
   }, []);
 
-  const remove = useCallback((id: string) => {
-    const list = load<Contact[]>(CONTACT_KEY, initialContacts).filter((c) => c.id !== id);
-    save(CONTACT_KEY, list);
+  const remove = useCallback(async (id: string) => {
+    await apiFetch<{ ok: boolean }>(`/contacts/${id}`, { method: "DELETE" });
+    const next = removeContactFromCache(id);
+    setContacts(next);
+    emitStore(CONTACT_EVENT);
   }, []);
 
   return { contacts, create, remove };

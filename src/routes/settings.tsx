@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Camera, Lock, Save, Trash2, User as UserIcon, BellRing } from "lucide-react";
 import { z } from "zod";
 import { AppShell } from "@/components/AppShell";
+import { getErrorMessage } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -145,7 +146,7 @@ function ProfileForm({
     reader.readAsDataURL(file);
   };
 
-  const onSubmit = (e: FormEvent) => {
+  const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const parsed = profileSchema.safeParse({ name, phone });
     if (!parsed.success) {
@@ -158,14 +159,18 @@ function ProfileForm({
       return;
     }
     setErrors({});
-    const updated = updateSession({
-      name: parsed.data.name,
-      phone: parsed.data.phone || undefined,
-      photo,
-    });
-    if (updated) {
-      onSaved(updated);
-      toast.success(t("settings.profile.saved"));
+    try {
+      const updated = await updateSession({
+        name: parsed.data.name,
+        phone: parsed.data.phone || undefined,
+        photo,
+      });
+      if (updated) {
+        onSaved(updated);
+        toast.success(t("settings.profile.saved"));
+      }
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Mise à jour du profil impossible"));
     }
   };
 
@@ -369,12 +374,16 @@ function NotificationsForm({
   const set = <K extends keyof NotificationPrefs>(k: K, v: NotificationPrefs[K]) =>
     setPrefs((p) => ({ ...p, [k]: v }));
 
-  const onSubmit = (e: FormEvent) => {
+  const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    const updated = updateSession({ notifications: prefs });
-    if (updated) {
-      onSaved(updated);
-      toast.success(t("settings.notifications.saved"));
+    try {
+      const updated = await updateSession({ notifications: prefs });
+      if (updated) {
+        onSaved(updated);
+        toast.success(t("settings.notifications.saved"));
+      }
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Mise à jour des notifications impossible"));
     }
   };
 

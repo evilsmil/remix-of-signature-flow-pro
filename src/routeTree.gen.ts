@@ -12,9 +12,12 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SentRouteImport } from './routes/sent'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as ResetCodeRouteImport } from './routes/reset-code'
 import { Route as MySignatureRouteImport } from './routes/my-signature'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as InboxRouteImport } from './routes/inbox'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DocumentsRouteImport } from './routes/documents'
 import { Route as ContactsRouteImport } from './routes/contacts'
 import { Route as IndexRouteImport } from './routes/index'
@@ -38,6 +41,16 @@ const SentRoute = SentRouteImport.update({
   path: '/sent',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetCodeRoute = ResetCodeRouteImport.update({
+  id: '/reset-code',
+  path: '/reset-code',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MySignatureRoute = MySignatureRouteImport.update({
   id: '/my-signature',
   path: '/my-signature',
@@ -51,6 +64,11 @@ const LoginRoute = LoginRouteImport.update({
 const InboxRoute = InboxRouteImport.update({
   id: '/inbox',
   path: '/inbox',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DocumentsRoute = DocumentsRouteImport.update({
@@ -93,9 +111,12 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/contacts': typeof ContactsRoute
   '/documents': typeof DocumentsRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/inbox': typeof InboxRoute
   '/login': typeof LoginRoute
   '/my-signature': typeof MySignatureRoute
+  '/reset-code': typeof ResetCodeRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/sent': typeof SentRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
@@ -108,9 +129,12 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/contacts': typeof ContactsRoute
   '/documents': typeof DocumentsRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/inbox': typeof InboxRoute
   '/login': typeof LoginRoute
   '/my-signature': typeof MySignatureRoute
+  '/reset-code': typeof ResetCodeRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/sent': typeof SentRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
@@ -124,9 +148,12 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/contacts': typeof ContactsRoute
   '/documents': typeof DocumentsRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/inbox': typeof InboxRoute
   '/login': typeof LoginRoute
   '/my-signature': typeof MySignatureRoute
+  '/reset-code': typeof ResetCodeRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/sent': typeof SentRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
@@ -141,9 +168,12 @@ export interface FileRouteTypes {
     | '/'
     | '/contacts'
     | '/documents'
+    | '/forgot-password'
     | '/inbox'
     | '/login'
     | '/my-signature'
+    | '/reset-code'
+    | '/reset-password'
     | '/sent'
     | '/settings'
     | '/signup'
@@ -156,9 +186,12 @@ export interface FileRouteTypes {
     | '/'
     | '/contacts'
     | '/documents'
+    | '/forgot-password'
     | '/inbox'
     | '/login'
     | '/my-signature'
+    | '/reset-code'
+    | '/reset-password'
     | '/sent'
     | '/settings'
     | '/signup'
@@ -171,9 +204,12 @@ export interface FileRouteTypes {
     | '/'
     | '/contacts'
     | '/documents'
+    | '/forgot-password'
     | '/inbox'
     | '/login'
     | '/my-signature'
+    | '/reset-code'
+    | '/reset-password'
     | '/sent'
     | '/settings'
     | '/signup'
@@ -187,9 +223,12 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ContactsRoute: typeof ContactsRoute
   DocumentsRoute: typeof DocumentsRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   InboxRoute: typeof InboxRoute
   LoginRoute: typeof LoginRoute
   MySignatureRoute: typeof MySignatureRoute
+  ResetCodeRoute: typeof ResetCodeRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   SentRoute: typeof SentRoute
   SettingsRoute: typeof SettingsRoute
   SignupRoute: typeof SignupRoute
@@ -222,6 +261,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-code': {
+      id: '/reset-code'
+      path: '/reset-code'
+      fullPath: '/reset-code'
+      preLoaderRoute: typeof ResetCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/my-signature': {
       id: '/my-signature'
       path: '/my-signature'
@@ -241,6 +294,13 @@ declare module '@tanstack/react-router' {
       path: '/inbox'
       fullPath: '/inbox'
       preLoaderRoute: typeof InboxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/documents': {
@@ -299,9 +359,12 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ContactsRoute: ContactsRoute,
   DocumentsRoute: DocumentsRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   InboxRoute: InboxRoute,
   LoginRoute: LoginRoute,
   MySignatureRoute: MySignatureRoute,
+  ResetCodeRoute: ResetCodeRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   SentRoute: SentRoute,
   SettingsRoute: SettingsRoute,
   SignupRoute: SignupRoute,
@@ -313,3 +376,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}

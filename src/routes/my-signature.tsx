@@ -2,16 +2,13 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Pen, Type, Image as ImageIcon, Trash2, Save, Check } from "lucide-react";
+import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getSession } from "@/lib/auth";
-import {
-  getMySignature,
-  saveMySignature,
-  clearMySignature,
-  type SavedSignatureMethod,
-} from "@/lib/mySignature";
+import { getErrorMessage } from "@/lib/api";
+import { type SavedSignatureMethod, useMySignature } from "@/lib/mySignature";
 import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -40,11 +37,11 @@ const METHODS: {
 function MySignaturePage() {
   const { t, i18n } = useTranslation();
   const session = getSession();
-  const email = session?.email ?? "";
+  const { saved, isLoading, save, clear } = useMySignature();
 
-  const [saved, setSaved] = useState(() => getMySignature(email));
   const [editing, setEditing] = useState(false);
   const [method, setMethod] = useState<SavedSignatureMethod>("drawn");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Drawn
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -58,12 +55,6 @@ function MySignaturePage() {
   const [imageData, setImageData] = useState<string | null>(null);
 
   const [justSaved, setJustSaved] = useState(false);
-
-  useEffect(() => {
-    const sync = () => setSaved(getMySignature(email));
-    window.addEventListener("usign:mySignature", sync);
-    return () => window.removeEventListener("usign:mySignature", sync);
-  }, [email]);
 
   useEffect(() => {
     if (!editing || method !== "drawn") return;
@@ -130,22 +121,39 @@ function MySignaturePage() {
     return false;
   })();
 
-  const handleSave = () => {
-    if (!email) return;
+  const handleSave = async () => {
+    if (isSubmitting || !canSave) return;
+
     let data = "";
     if (method === "drawn") data = canvasRef.current?.toDataURL("image/png") ?? "";
     else if (method === "typed") data = typed.trim();
     else if (method === "image") data = imageData ?? "";
-    saveMySignature(email, { method, data });
-    setEditing(false);
-    setJustSaved(true);
-    setTimeout(() => setJustSaved(false), 2000);
+
+    setIsSubmitting(true);
+    try {
+      await save({ method, data });
+      setEditing(false);
+      setJustSaved(true);
+      window.setTimeout(() => setJustSaved(false), 2000);
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Enregistrement de la signature impossible"));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleDelete = () => {
-    if (!email) return;
+  const handleDelete = async () => {
+    if (isSubmitting) return;
     if (!confirm(t("mySignature.confirmDelete"))) return;
-    clearMySignature(email);
+
+    setIsSubmitting(true);
+    try {
+      await clear();
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Suppression de la signature impossible"));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const startEdit = () => {
@@ -167,7 +175,13 @@ function MySignaturePage() {
           <p className="mt-1 text-sm text-muted-foreground">{t("mySignature.subtitle")}</p>
         </div>
 
-        {!editing && (
+        {!editing && isLoading && !saved && (
+          <div className="rounded-lg border bg-card p-6">
+            <div className="h-24 animate-pulse rounded-md bg-muted/60" />
+          </div>
+        )}
+
+        {!editing && !isLoading && (
           <div className="rounded-lg border bg-card p-6">
             {saved ? (
               <div className="space-y-4">
@@ -210,7 +224,7 @@ function MySignaturePage() {
                   <Button onClick={startEdit} className="bg-action text-action-foreground hover:opacity-90">
                     <Pen className="mr-2 h-4 w-4" /> {t("mySignature.edit")}
                   </Button>
-                  <Button variant="outline" onClick={handleDelete}>
+                  <Button variant="outline" onClick={() => void handleDelete()} disabled={isSubmitting}>
                     <Trash2 className="mr-2 h-4 w-4" /> {t("mySignature.delete")}
                   </Button>
                 </div>
@@ -315,12 +329,12 @@ function MySignaturePage() {
             <p className="text-xs text-muted-foreground">{t("mySignature.otpDisabled")}</p>
 
             <div className="flex justify-end gap-2">
-              <Button variant="ghost" onClick={() => setEditing(false)}>
+              <Button variant="ghost" onClick={() => setEditing(false)} disabled={isSubmitting}>
                 {t("common.cancel")}
               </Button>
               <Button
-                onClick={handleSave}
-                disabled={!canSave}
+                onClick={() => void handleSave()}
+                disabled={!canSave || isSubmitting}
                 className="bg-action text-action-foreground hover:opacity-90"
               >
                 <Save className="mr-2 h-4 w-4" /> {t("mySignature.save")}

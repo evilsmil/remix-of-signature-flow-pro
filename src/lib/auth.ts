@@ -1,5 +1,13 @@
-// Mock auth — demo only, NOT secure. Stores a fake session in localStorage.
-const KEY = "goodflag.session";
+import {
+  apiFetch,
+  getStoredAuthToken,
+  isApiError,
+  setStoredAuthToken,
+} from "./api";
+
+const SESSION_KEY = "usign.session";
+const BINDERS_CACHE_KEY = "usign.binders.cache";
+const CONTACTS_CACHE_KEY = "usign.contacts.cache";
 
 export type NotificationPrefs = {
   emailOnSent: boolean;
@@ -24,16 +32,14 @@ export const DEFAULT_NOTIFS: NotificationPrefs = {
   reminders: false,
 };
 
-function deriveName(email: string) {
-  const local = email.split("@")[0] ?? "user";
-  const parts = local.split(/[._-]+/).filter(Boolean);
-  const name = parts.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(" ");
-  const initials =
-    parts.length >= 2
-      ? (parts[0][0] + parts[1][0]).toUpperCase()
-      : (parts[0]?.slice(0, 2) ?? "US").toUpperCase();
-  return { name: name || "User", initials };
-}
+type SessionResponse = {
+  token: string;
+  session: Session;
+};
+
+type BasicOkResponse = {
+  ok: boolean;
+};
 
 export function initialsFromName(fullName: string) {
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
@@ -42,58 +48,191 @@ export function initialsFromName(fullName: string) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-export function getSession(): Session | null {
+function dispatchAuthChange() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event("goodflag:auth"));
+  window.dispatchEvent(new Event("usign:auth"));
+}
+
+function readStoredSession(): Session | null {
   if (typeof window === "undefined") return null;
-  const raw = localStorage.getItem(KEY);
+  const raw = localStorage.getItem(SESSION_KEY);
   if (!raw) return null;
+
   try {
-    return JSON.parse(raw) as Session;
+    const session = JSON.parse(raw) as Session;
+    return {
+      ...session,
+      notifications: { ...DEFAULT_NOTIFS, ...(session.notifications ?? {}) },
+    };
   } catch {
     return null;
   }
 }
 
-export function login(email: string): Session {
-  const { name, initials } = deriveName(email);
-  const session: Session = {
-    email,
-    name,
-    initials,
-    notifications: DEFAULT_NOTIFS,
-  };
-  localStorage.setItem(KEY, JSON.stringify(session));
-  window.dispatchEvent(new Event("goodflag:auth"));
+function writeStoredSession(session: Session) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(
+    SESSION_KEY,
+    JSON.stringify({
+      ...session,
+      notifications: { ...DEFAULT_NOTIFS, ...(session.notifications ?? {}) },
+    }),
+  );
+}
+
+function clearCachedCollections() {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(BINDERS_CACHE_KEY);
+  localStorage.removeItem(CONTACTS_CACHE_KEY);
+}
+
+function persistSession(session: Session, token?: string) {
+  if (token) {
+    setStoredAuthToken(token);
+  }
+  writeStoredSession(session);
+  dispatchAuthChange();
   return session;
 }
 
-export function signup(name: string, email: string): Session {
-  const initials = initialsFromName(name);
-  const session: Session = {
-    email,
-    name: name.trim(),
-    initials,
-    notifications: DEFAULT_NOTIFS,
-  };
-  localStorage.setItem(KEY, JSON.stringify(session));
-  window.dispatchEvent(new Event("goodflag:auth"));
-  return session;
+function clearAuthState() {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem(SESSION_KEY);
+  }
+  setStoredAuthToken(null);
+  clearCachedCollections();
+  dispatchAuthChange();
 }
 
-export function updateSession(patch: Partial<Session>): Session | null {
+export function getSession(): Session | null {
+  return readStoredSession();
+}
+
+export async function refreshSession() {
+  if (!getStoredAuthToken()) {
+    clearAuthState();
+    return null;
+  }
+
+  try {
+    const session = await apiFetch<Session>("/auth/session");
+    return persistSession(session);
+  } catch (error) {
+    if (isApiError(error) && error.status === 401) {
+      clearAuthState();
+      return null;
+    }
+
+    throw error;
+  }
+}
+
+export async function login(email: string, password: string) {
+  const response = await apiFetch<SessionResponse>("/auth/login", {
+    method: "POST",
+    skipAuth: true,
+    body: JSON.stringify({ email: email.trim(), password }),
+  });
+
+  return persistSession(response.session, response.token);
+}
+
+export async function signup(
+  name: string,
+  email: string,
+  password: string,
+  confirmPassword: string,
+) {
+  const response = await apiFetch<SessionResponse>("/auth/signup", {
+    method: "POST",
+    skipAuth: true,
+    body: JSON.stringify({
+      name: name.trim(),
+      email: email.trim(),
+      password,
+      confirmPassword,
+    }),
+  });
+
+  return persistSession(response.session, response.token);
+}
+
+export async function forgotPassword(email: string) {
+  return apiFetch<BasicOkResponse>("/auth/forgot-password", {
+    method: "POST",
+    skipAuth: true,
+    body: JSON.stringify({ email: email.trim() }),
+  });
+}
+
+export async function verifyResetCode(token: string, code: string) {
+  return apiFetch<BasicOkResponse>("/auth/reset-password/verify-code", {
+    method: "POST",
+    skipAuth: true,
+    body: JSON.stringify({ token, code: code.trim() }),
+  });
+}
+
+export async function resetPassword(
+  token: string,
+  password: string,
+  confirmPassword: string,
+) {
+  return apiFetch<BasicOkResponse>("/auth/reset-password", {
+    method: "POST",
+    skipAuth: true,
+    body: JSON.stringify({
+      token,
+      password,
+      confirmPassword,
+    }),
+  });
+}
+
+export async function updateSession(patch: Partial<Session>) {
   const current = getSession();
   if (!current) return null;
-  const next: Session = {
-    ...current,
-    ...patch,
-    notifications: { ...DEFAULT_NOTIFS, ...current.notifications, ...(patch.notifications ?? {}) },
-  };
-  if (patch.name) next.initials = initialsFromName(patch.name);
-  localStorage.setItem(KEY, JSON.stringify(next));
-  window.dispatchEvent(new Event("goodflag:auth"));
-  return next;
+
+  const body: Record<string, unknown> = {};
+
+  if (Object.prototype.hasOwnProperty.call(patch, "name")) {
+    body.name = patch.name ?? "";
+  }
+
+  if (Object.prototype.hasOwnProperty.call(patch, "phone")) {
+    body.phone = patch.phone ?? "";
+  }
+
+  if (Object.prototype.hasOwnProperty.call(patch, "photo")) {
+    body.photo = patch.photo ?? "";
+  }
+
+  if (patch.notifications) {
+    body.notifications = { ...DEFAULT_NOTIFS, ...current.notifications, ...patch.notifications };
+  }
+
+  if (Object.keys(body).length === 0) {
+    return current;
+  }
+
+  const session = await apiFetch<Session>("/auth/session", {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+
+  return persistSession(session);
 }
 
-export function logout() {
-  localStorage.removeItem(KEY);
-  window.dispatchEvent(new Event("goodflag:auth"));
+export async function logout() {
+  try {
+    if (getStoredAuthToken()) {
+      await apiFetch<{ ok: boolean }>("/auth/logout", {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
+    }
+  } finally {
+    clearAuthState();
+  }
 }

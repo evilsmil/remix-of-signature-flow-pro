@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import {
   FilePlus2,
   X,
@@ -21,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { getErrorMessage } from "@/lib/api";
 import { useBinders } from "@/lib/store";
 import { getSession } from "@/lib/auth";
 import {
@@ -93,6 +95,7 @@ export function NewBinderDialog({
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [activePage, setActivePage] = useState(1);
   const [activeKind, setActiveKind] = useState<SignatureFieldKind>("signature");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const stepIndex = STEPS.indexOf(step);
 
@@ -125,9 +128,12 @@ export function NewBinderDialog({
     return true;
   }, [step, name, signers]);
 
-  const goNext = () => {
-    if (!canNext) return;
-    if (step === "review") return submit();
+  const goNext = async () => {
+    if (!canNext || isSubmitting) return;
+    if (step === "review") {
+      await submit();
+      return;
+    }
     const nextStep = STEPS[stepIndex + 1];
     setStep(nextStep);
     // Initialize placement defaults when entering the step
@@ -141,7 +147,7 @@ export function NewBinderDialog({
   };
   const goBack = () => stepIndex > 0 && setStep(STEPS[stepIndex - 1]);
 
-  const submit = () => {
+  const submit = async () => {
     const session = getSession();
     const enrichedSigners: BinderSigner[] = signers.map((s, i) => ({
       ...s,
@@ -149,22 +155,30 @@ export function NewBinderDialog({
       color: s.color ?? SIGNER_COLORS[i % SIGNER_COLORS.length],
       status: "pending",
     }));
-    const b = create({
-      name: name.trim(),
-      description: description.trim() || undefined,
-      group,
-      ownerName: session?.name ?? "User",
-      ownerEmail: session?.email ?? "user@example.com",
-      ownerInitials: session?.initials ?? "US",
-      documents,
-      attachments,
-      signers: enrichedSigners,
-      signatureFields: fields,
-      notifications: notif,
-      consolidation,
-    });
-    handleClose(false);
-    onCreated?.(b.id);
+
+    setIsSubmitting(true);
+    try {
+      const binder = await create({
+        name: name.trim(),
+        description: description.trim() || undefined,
+        group,
+        ownerName: session?.name ?? "User",
+        ownerEmail: session?.email ?? "user@example.com",
+        ownerInitials: session?.initials ?? "US",
+        documents,
+        attachments,
+        signers: enrichedSigners,
+        signatureFields: fields,
+        notifications: notif,
+        consolidation,
+      });
+      handleClose(false);
+      onCreated?.(binder.id);
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Création du parapheur impossible"));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const onPickDocs = (files: FileList | null) => {
@@ -690,17 +704,17 @@ export function NewBinderDialog({
 
         {/* Footer */}
         <div className="flex items-center justify-between gap-3 border-t bg-muted/40 px-6 py-4">
-          <Button type="button" variant="ghost" onClick={() => handleClose(false)}>
+          <Button type="button" variant="ghost" onClick={() => handleClose(false)} disabled={isSubmitting}>
             {t("common.cancel")}
           </Button>
           <div className="flex items-center gap-2">
-            <Button type="button" variant="outline" onClick={goBack} disabled={stepIndex === 0}>
+            <Button type="button" variant="outline" onClick={goBack} disabled={stepIndex === 0 || isSubmitting}>
               {t("newBinder.back")}
             </Button>
             <Button
               type="button"
-              onClick={goNext}
-              disabled={!canNext}
+              onClick={() => void goNext()}
+              disabled={!canNext || isSubmitting}
               className="bg-action text-action-foreground hover:opacity-90"
             >
               {step === "review" ? t("newBinder.create") : t("newBinder.next")}
