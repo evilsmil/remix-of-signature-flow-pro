@@ -92,6 +92,7 @@ export function NewBinderDialog({
   const [activeSignerId, setActiveSignerId] = useState<string | null>(null);
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [activePage, setActivePage] = useState(1);
+  const [activeKind, setActiveKind] = useState<SignatureFieldKind>("signature");
 
   const stepIndex = STEPS.indexOf(step);
 
@@ -211,17 +212,20 @@ export function NewBinderDialog({
     const rect = e.currentTarget.getBoundingClientRect();
     const xRel = (e.clientX - rect.left) / rect.width;
     const yRel = (e.clientY - rect.top) / rect.height;
+    const w = activeKind === "initial" ? INITIAL_W : ZONE_W;
+    const h = activeKind === "initial" ? INITIAL_H : ZONE_H;
     setFields((p) => [
       ...p,
       {
         id: `f_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
         documentId: activeDocId,
         page: activePage,
-        x: Math.max(0, Math.min(1 - ZONE_W, xRel - ZONE_W / 2)),
-        y: Math.max(0, Math.min(1 - ZONE_H, yRel - ZONE_H / 2)),
-        width: ZONE_W,
-        height: ZONE_H,
+        x: Math.max(0, Math.min(1 - w, xRel - w / 2)),
+        y: Math.max(0, Math.min(1 - h, yRel - h / 2)),
+        width: w,
+        height: h,
         signerId: activeSignerId,
+        kind: activeKind,
       },
     ]);
   };
