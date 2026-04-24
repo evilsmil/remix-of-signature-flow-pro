@@ -495,6 +495,48 @@ function SignPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Decline-to-sign dialog */}
+      <Dialog open={declineOpen} onOpenChange={setDeclineOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("decline.title")}</DialogTitle>
+            <DialogDescription>{t("decline.intro")}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label
+              htmlFor="decline-reason"
+              className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
+            >
+              {t("decline.reasonLabel")}
+            </label>
+            <Textarea
+              id="decline-reason"
+              value={declineReason}
+              onChange={(e) => {
+                setDeclineReason(e.target.value);
+                if (declineErr) setDeclineErr(null);
+              }}
+              placeholder={t("decline.reasonPlaceholder")}
+              rows={4}
+              autoFocus
+            />
+            {declineErr && <p className="text-xs text-destructive">{declineErr}</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeclineOpen(false)}>
+              {t("decline.cancel")}
+            </Button>
+            <Button
+              onClick={submitDecline}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              <XCircle className="mr-2 h-4 w-4" />
+              {t("decline.confirm")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PublicShell>
   );
 }
