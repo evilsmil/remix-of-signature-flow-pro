@@ -132,7 +132,7 @@ function SignPage() {
     const canonical = (sigEntries[sigEntries.length - 1] ?? entries[entries.length - 1])[1];
     const fieldOverrides: Record<
       string,
-      { method: SignatureField["signatureData"] extends string ? SignatureResult["method"] : never; signatureData: string }
+      { method: SignatureResult["method"]; signatureData: string }
     > = {};
     for (const [fid, res] of entries) {
       fieldOverrides[fid] = { method: res.method, signatureData: res.data };
