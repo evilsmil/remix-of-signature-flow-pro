@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Send as SendIcon, BellRing, ExternalLink, CheckCircle2, Clock, XCircle } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
@@ -33,6 +33,8 @@ function SentPage() {
   const email = (session?.email ?? "").toLowerCase();
   const [filter, setFilter] = useState<Filter>("all");
   const [remindedKey, setRemindedKey] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const items = useMemo<Binder[]>(() => {
     if (!email) return [];
@@ -59,18 +61,18 @@ function SentPage() {
   };
 
   const FILTERS: { key: Filter; label: string }[] = [
-    { key: "all", label: t("sent.filterAll") },
-    { key: "pending", label: t("sent.filterPending") },
-    { key: "finished", label: t("sent.filterFinished") },
-    { key: "stopped", label: t("sent.filterStopped") },
+    { key: "all", label: mounted ? t("sent.filterAll") : "" },
+    { key: "pending", label: mounted ? t("sent.filterPending") : "" },
+    { key: "finished", label: mounted ? t("sent.filterFinished") : "" },
+    { key: "stopped", label: mounted ? t("sent.filterStopped") : "" },
   ];
 
   return (
     <AppShell>
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-semibold text-foreground">{t("sent.title")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("sent.subtitle")}</p>
+          <h2 className="text-2xl font-semibold text-foreground">{mounted ? t("sent.title") : ""}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{mounted ? t("sent.subtitle") : ""}</p>
         </div>
 
         {/* Filtres */}
