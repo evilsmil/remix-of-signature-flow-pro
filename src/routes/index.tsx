@@ -1,13 +1,18 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FilePlus2, UserPlus, Settings } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { NewBinderDialog } from "@/components/NewBinderDialog";
-import { NewContactDialog } from "@/components/NewContactDialog";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { useBinders } from "@/lib/store";
 import type { BinderStatus } from "@/lib/mockData";
+
+const NewBinderDialog = lazy(() =>
+  import("@/components/NewBinderDialog").then((m) => ({ default: m.NewBinderDialog })),
+);
+const NewContactDialog = lazy(() =>
+  import("@/components/NewContactDialog").then((m) => ({ default: m.NewContactDialog })),
+);
 
 export const Route = createFileRoute("/")({
   head: () => ({
