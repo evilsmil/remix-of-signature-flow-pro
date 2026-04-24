@@ -29,6 +29,7 @@ import {
   type BinderSigner,
   type BinderNotifications,
   type SignatureField,
+  type SignatureFieldKind,
   SIGNER_COLORS,
 } from "@/lib/mockData";
 import { cn } from "@/lib/utils";
@@ -56,6 +57,9 @@ const STEPS: StepKey[] = [
 // Width / height of a signature zone, in fractions of the page.
 const ZONE_W = 0.22;
 const ZONE_H = 0.06;
+// Smaller default for an "initial" (paraphe) zone.
+const INITIAL_W = 0.09;
+const INITIAL_H = 0.05;
 
 export function NewBinderDialog({
   open,
