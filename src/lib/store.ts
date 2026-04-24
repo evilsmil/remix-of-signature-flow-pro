@@ -63,8 +63,17 @@ export function useBinders() {
       consolidation?: boolean;
     }) => {
       const now = new Date().toISOString();
+      const id = `b_${Date.now()}`;
+      const initialEvent: AuditEvent = {
+        id: `ev_${Date.now()}`,
+        kind: "binder.created",
+        at: now,
+        actorName: data.ownerName,
+        actorEmail: data.ownerEmail,
+        ip: mockIp(),
+      };
       const next: Binder = {
-        id: `b_${Date.now()}`,
+        id,
         name: data.name,
         description: data.description,
         ownerName: data.ownerName,
@@ -81,6 +90,7 @@ export function useBinders() {
         signers: (data.signers ?? []).map((s) => ({ ...s, status: s.status ?? "pending" })),
         signatureFields: data.signatureFields ?? [],
         notifications: data.notifications ?? { onStart: true, onComplete: true, reminders: false },
+        auditEvents: [initialEvent],
       };
       const list = [next, ...load<Binder[]>(BINDER_KEY, initialBinders)];
       save(BINDER_KEY, list);
