@@ -361,11 +361,17 @@ function SignPage() {
                           {filled ? "✓" : i + 1}
                         </span>
                         <span className="text-foreground">
-                          {t("sign.zoneOf", {
-                            n: i + 1,
-                            p: f.page,
-                            doc: doc?.name ?? "—",
-                          })}
+                          {f.kind === "initial"
+                            ? t("sign.initialOf", {
+                                n: i + 1,
+                                p: f.page,
+                                doc: doc?.name ?? "—",
+                              })
+                            : t("sign.zoneOf", {
+                                n: i + 1,
+                                p: f.page,
+                                doc: doc?.name ?? "—",
+                              })}
                         </span>
                       </button>
                     </li>
