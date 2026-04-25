@@ -11,7 +11,6 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as SentRouteImport } from './routes/sent'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ResetCodeRouteImport } from './routes/reset-code'
 import { Route as MySignatureRouteImport } from './routes/my-signature'
@@ -34,11 +33,6 @@ const SignupRoute = SignupRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SentRoute = SentRouteImport.update({
-  id: '/sent',
-  path: '/sent',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -117,7 +111,6 @@ export interface FileRoutesByFullPath {
   '/my-signature': typeof MySignatureRoute
   '/reset-code': typeof ResetCodeRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/sent': typeof SentRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/binders/$status': typeof BindersStatusRoute
@@ -135,7 +128,6 @@ export interface FileRoutesByTo {
   '/my-signature': typeof MySignatureRoute
   '/reset-code': typeof ResetCodeRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/sent': typeof SentRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/binders/$status': typeof BindersStatusRoute
@@ -154,7 +146,6 @@ export interface FileRoutesById {
   '/my-signature': typeof MySignatureRoute
   '/reset-code': typeof ResetCodeRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/sent': typeof SentRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/binders/$status': typeof BindersStatusRoute
@@ -174,7 +165,6 @@ export interface FileRouteTypes {
     | '/my-signature'
     | '/reset-code'
     | '/reset-password'
-    | '/sent'
     | '/settings'
     | '/signup'
     | '/binders/$status'
@@ -192,7 +182,6 @@ export interface FileRouteTypes {
     | '/my-signature'
     | '/reset-code'
     | '/reset-password'
-    | '/sent'
     | '/settings'
     | '/signup'
     | '/binders/$status'
@@ -210,7 +199,6 @@ export interface FileRouteTypes {
     | '/my-signature'
     | '/reset-code'
     | '/reset-password'
-    | '/sent'
     | '/settings'
     | '/signup'
     | '/binders/$status'
@@ -229,7 +217,6 @@ export interface RootRouteChildren {
   MySignatureRoute: typeof MySignatureRoute
   ResetCodeRoute: typeof ResetCodeRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
-  SentRoute: typeof SentRoute
   SettingsRoute: typeof SettingsRoute
   SignupRoute: typeof SignupRoute
   BindersStatusRoute: typeof BindersStatusRoute
@@ -252,13 +239,6 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sent': {
-      id: '/sent'
-      path: '/sent'
-      fullPath: '/sent'
-      preLoaderRoute: typeof SentRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -365,7 +345,6 @@ const rootRouteChildren: RootRouteChildren = {
   MySignatureRoute: MySignatureRoute,
   ResetCodeRoute: ResetCodeRoute,
   ResetPasswordRoute: ResetPasswordRoute,
-  SentRoute: SentRoute,
   SettingsRoute: SettingsRoute,
   SignupRoute: SignupRoute,
   BindersStatusRoute: BindersStatusRoute,

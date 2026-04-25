@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import {
   X,
   MessageSquare,
@@ -32,6 +33,7 @@ import {
 import { AppShell } from "@/components/AppShell";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useBinders } from "@/lib/store";
+import { getErrorMessage } from "@/lib/api";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -58,13 +60,24 @@ type Tab = "general" | "steps" | "documents" | "history" | "notifications" | "op
 function BinderDetail() {
   const { id } = Route.useParams();
   const { t, i18n } = useTranslation();
-  const { binders, update, startBinder: startBinderAction, recordDownload } = useBinders();
+  const {
+    binders,
+    update,
+    startBinder: startBinderAction,
+    recordDownload,
+    updateSignerInvitationEmail,
+  } = useBinders();
   const navigate = useNavigate();
+  const session = getSession();
+  const sessionEmail = session?.email.trim().toLowerCase() ?? null;
   const binder = binders.find((b) => b.id === id);
   const [tab, setTab] = useState<Tab>("general");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<null | "name" | "description" | "group">(null);
   const [draftValue, setDraftValue] = useState("");
+  const [editingSignerEmailId, setEditingSignerEmailId] = useState<string | null>(null);
+  const [draftSignerEmail, setDraftSignerEmail] = useState("");
+  const [savingSignerEmailId, setSavingSignerEmailId] = useState<string | null>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
   const attInputRef = useRef<HTMLInputElement>(null);
 
@@ -97,6 +110,9 @@ function BinderDetail() {
     return `${origin}/sign/${binder.id}/${signerId}`;
   };
 
+  const canOpenSignPage = (signerEmail: string) =>
+    sessionEmail === signerEmail.trim().toLowerCase();
+
   const copyLink = async (signerId: string) => {
     const url = buildSignLink(signerId);
     try {
@@ -122,6 +138,34 @@ function BinderDetail() {
   };
   const cancelEdit = () => setEditingField(null);
 
+  const cancelSignerEmailEdit = () => {
+    setEditingSignerEmailId(null);
+    setDraftSignerEmail("");
+  };
+
+  const startSignerEmailEdit = (signer: BinderSigner) => {
+    setEditingSignerEmailId(signer.id);
+    setDraftSignerEmail(signer.email);
+  };
+
+  const submitSignerEmailEdit = async (signer: BinderSigner) => {
+    if (!draftSignerEmail.trim()) {
+      toast.error(t("detail.inviteEmailUpdateError"));
+      return;
+    }
+
+    setSavingSignerEmailId(signer.id);
+    try {
+      await updateSignerInvitationEmail(binder.id, signer.id, draftSignerEmail.trim());
+      toast.success(t("detail.inviteEmailUpdated"));
+      cancelSignerEmailEdit();
+    } catch (error) {
+      toast.error(getErrorMessage(error, t("detail.inviteEmailUpdateError")));
+    } finally {
+      setSavingSignerEmailId(null);
+    }
+  };
+
   const toggleConsolidation = () => {
     if (!editable) return;
     update(binder.id, { consolidation: !binder.consolidation });
@@ -129,7 +173,12 @@ function BinderDetail() {
 
   const toggleNotif = (key: "onStart" | "onComplete" | "reminders") => {
     if (!editable) return;
-    const current = binder.notifications ?? { onStart: true, onComplete: true, reminders: false };
+    const current = binder.notifications ?? {
+      onStart: true,
+      onComplete: true,
+      reminders: false,
+      reminderEveryHours: 24,
+    };
     update(binder.id, { notifications: { ...current, [key]: !current[key] } });
   };
 
@@ -207,12 +256,15 @@ function BinderDetail() {
   };
 
   const onDownloadSigned = () => {
-    const session = getSession();
-    generateSignedPdf(binder, i18n.language);
-    recordDownload(binder.id, { name: session?.name, email: session?.email }, "signed_pdf");
+    void generateSignedPdf(binder, i18n.language)
+      .then(() =>
+        recordDownload(binder.id, { name: session?.name, email: session?.email }, "signed_pdf"),
+      )
+      .catch((error) => {
+        toast.error(error instanceof Error ? error.message : "Téléchargement impossible");
+      });
   };
   const onDownloadCertificate = () => {
-    const session = getSession();
     generateCertificatePdf(binder, i18n.language);
     recordDownload(binder.id, { name: session?.name, email: session?.email }, "certificate");
   };
@@ -425,6 +477,10 @@ function BinderDetail() {
                       (f) => f.signerId === s.id,
                     ).length;
                     const signed = s.status === "signed";
+                    const canFixInvitationEmail =
+                      !editable && s.status === "pending" && s.inviteEmailStatus === "failed";
+                    const isEditingSignerEmail = editingSignerEmailId === s.id;
+                    const isSavingSignerEmail = savingSignerEmailId === s.id;
                     return (
                       <li
                         key={s.id}
@@ -454,7 +510,45 @@ function BinderDetail() {
                         ) : (
                           <div className="flex-1 leading-tight">
                             <div className="text-sm font-medium text-foreground">{s.name}</div>
-                            <div className="text-xs text-muted-foreground">{s.email}</div>
+                            {isEditingSignerEmail ? (
+                              <div className="mt-1 flex flex-wrap items-center gap-2">
+                                <Input
+                                  value={draftSignerEmail}
+                                  onChange={(e) => setDraftSignerEmail(e.target.value)}
+                                  placeholder={t("newBinder.signerEmail")}
+                                  className="h-8 w-full max-w-sm text-sm"
+                                />
+                                <Button
+                                  size="sm"
+                                  onClick={() => submitSignerEmailEdit(s)}
+                                  disabled={isSavingSignerEmail}
+                                >
+                                  {isSavingSignerEmail
+                                    ? t("detail.savingInviteEmail")
+                                    : t("detail.saveInviteEmail")}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={cancelSignerEmailEdit}
+                                  disabled={isSavingSignerEmail}
+                                >
+                                  {t("common.cancel")}
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="text-xs text-muted-foreground">{s.email}</div>
+                            )}
+                            {!isEditingSignerEmail && s.inviteEmailStatus === "sent" && s.inviteEmailSentAt ? (
+                              <div className="mt-1 text-[11px] text-muted-foreground">
+                                {t("detail.inviteEmailSentAt", { date: fmt(s.inviteEmailSentAt) })}
+                              </div>
+                            ) : null}
+                            {!isEditingSignerEmail && s.inviteEmailStatus === "failed" && s.inviteEmailError ? (
+                              <div className="mt-1 text-[11px] text-destructive">
+                                {s.inviteEmailError}
+                              </div>
+                            ) : null}
                           </div>
                         )}
                         <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -470,8 +564,32 @@ function BinderDetail() {
                               <Clock className="h-3 w-3" /> {t("detail.pending")}
                             </span>
                           )}
+                          {s.inviteEmailStatus === "sent" && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-700">
+                              <Mail className="h-3 w-3" /> {t("detail.inviteEmailSent")}
+                            </span>
+                          )}
+                          {s.inviteEmailStatus === "pending" && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-amber-700">
+                              <Mail className="h-3 w-3" /> {t("detail.inviteEmailPending")}
+                            </span>
+                          )}
+                          {s.inviteEmailStatus === "failed" && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-rose-700">
+                              <XCircle className="h-3 w-3" /> {t("detail.inviteEmailFailed")}
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center gap-1">
+                          {canFixInvitationEmail && !isEditingSignerEmail && (
+                            <button
+                              onClick={() => startSignerEmailEdit(s)}
+                              className="inline-flex items-center gap-1 rounded-md border bg-background px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-accent"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                              {t("detail.editInviteEmail")}
+                            </button>
+                          )}
                           <button
                             onClick={() => copyLink(s.id)}
                             className="inline-flex items-center gap-1 rounded-md border bg-background px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-accent"
@@ -479,14 +597,16 @@ function BinderDetail() {
                             <Copy className="h-3.5 w-3.5" />
                             {copiedId === s.id ? t("common.copied") : t("detail.copyLink")}
                           </button>
-                          <Link
-                            to="/sign/$binderId/$signerId"
-                            params={{ binderId: binder.id, signerId: s.id }}
-                            target="_blank"
-                            className="inline-flex items-center gap-1 rounded-md bg-action px-2.5 py-1.5 text-xs font-medium text-action-foreground hover:opacity-90"
-                          >
-                            <ExternalLink className="h-3.5 w-3.5" /> {t("detail.openLink")}
-                          </Link>
+                          {canOpenSignPage(s.email) && (
+                            <Link
+                              to="/sign/$binderId/$signerId"
+                              params={{ binderId: binder.id, signerId: s.id }}
+                              target="_blank"
+                              className="inline-flex items-center gap-1 rounded-md bg-action px-2.5 py-1.5 text-xs font-medium text-action-foreground hover:opacity-90"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" /> {t("detail.openLink")}
+                            </Link>
+                          )}
                           {editable && (
                             <button
                               onClick={() => removeSigner(s.id)}
@@ -667,6 +787,13 @@ function BinderDetail() {
                   </label>
                 );
               })}
+              {binder.notifications?.reminders && binder.notifications.reminderEveryHours ? (
+                <p className="text-xs text-muted-foreground">
+                  {t("newBinder.reminderEveryHours", {
+                    count: binder.notifications.reminderEveryHours,
+                  })}
+                </p>
+              ) : null}
             </Section>
           )}
 

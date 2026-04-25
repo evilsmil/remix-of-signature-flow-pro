@@ -16,6 +16,8 @@ import type {
 } from "./mockData";
 
 const BINDER_CACHE_KEY = "usign.binders.cache";
+const INBOX_BINDER_CACHE_KEY = "usign.binders.inbox.cache";
+const PARTICIPATED_BINDER_CACHE_KEY = "usign.binders.participated.cache";
 const CONTACT_CACHE_KEY = "usign.contacts.cache";
 const BINDER_EVENT = "binders";
 const CONTACT_EVENT = "contacts";
@@ -27,7 +29,7 @@ type CreateBinderInput = {
   ownerName: string;
   ownerEmail: string;
   ownerInitials: string;
-  documents?: BinderDocument[];
+  documents?: (BinderDocument & { content?: string })[];
   attachments?: BinderAttachment[];
   signers?: BinderSigner[];
   signatureFields?: SignatureField[];
@@ -123,12 +125,26 @@ function removeContactFromCache(id: string) {
 async function fetchBinders() {
   if (!hasStoredAuthToken()) {
     clearCache(BINDER_CACHE_KEY);
+    clearCache(INBOX_BINDER_CACHE_KEY);
+    clearCache(PARTICIPATED_BINDER_CACHE_KEY);
     return [] as Binder[];
   }
 
   const binders = await apiFetch<Binder[]>("/binders");
   const next = sortBinders(binders);
   writeCache(BINDER_CACHE_KEY, next);
+  return next;
+}
+
+async function fetchScopedBinders(path: string, cacheKey: string) {
+  if (!hasStoredAuthToken()) {
+    clearCache(cacheKey);
+    return [] as Binder[];
+  }
+
+  const binders = await apiFetch<Binder[]>(path);
+  const next = sortBinders(binders);
+  writeCache(cacheKey, next);
   return next;
 }
 
@@ -201,12 +217,15 @@ export async function signPublicSigner(
 }
 
 export function useBinders() {
-  const [binders, setBinders] = useState<Binder[]>(() =>
-    hasStoredAuthToken() ? readCache(BINDER_CACHE_KEY, []) : [],
-  );
+  const [binders, setBinders] = useState<Binder[]>([]);
 
   useEffect(() => {
     let active = true;
+
+    if (hasStoredAuthToken()) {
+      const cached = readCache<Binder[]>(BINDER_CACHE_KEY, []);
+      if (cached.length) setBinders(cached);
+    }
 
     const sync = async () => {
       try {
@@ -234,6 +253,8 @@ export function useBinders() {
       if (!hasStoredAuthToken()) {
         setBinders([]);
         clearCache(BINDER_CACHE_KEY);
+        clearCache(INBOX_BINDER_CACHE_KEY);
+        clearCache(PARTICIPATED_BINDER_CACHE_KEY);
         return;
       }
 
@@ -349,6 +370,21 @@ export function useBinders() {
     [],
   );
 
+  const updateSignerInvitationEmail = useCallback(
+    async (binderId: string, signerId: string, email: string) => {
+      const binder = await apiFetch<Binder>(`/binders/${binderId}/signers/${signerId}/invitation`, {
+        method: "PATCH",
+        body: JSON.stringify({ email }),
+      });
+
+      const next = replaceBinderCache(binder);
+      setBinders(next);
+      emitStore(BINDER_EVENT);
+      return binder;
+    },
+    [],
+  );
+
   const signAs = useCallback(async (binderId: string, signerId: string, payload: SignPayload) => {
     const binder = await apiFetch<Binder>(`/binders/${binderId}/signers/${signerId}/sign`, {
       method: "POST",
@@ -391,15 +427,85 @@ export function useBinders() {
     markSignerViewed,
     declineAs,
     remindSigner,
+    updateSignerInvitationEmail,
     appendEvent,
     recordDownload,
   };
 }
 
+function useBinderCollection(path: string, cacheKey: string) {
+  const [binders, setBinders] = useState<Binder[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+
+    if (hasStoredAuthToken()) {
+      const cached = readCache<Binder[]>(cacheKey, []);
+      if (cached.length) setBinders(cached);
+    }
+
+    const sync = async () => {
+      setIsLoading(true);
+      try {
+        const next = await fetchScopedBinders(path, cacheKey);
+        if (active) {
+          setBinders(next);
+        }
+      } catch {
+        if (!active) return;
+        if (!hasStoredAuthToken()) {
+          setBinders([]);
+        }
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void sync();
+
+    const onStoreChange = (event: Event) => {
+      if ((event as CustomEvent<string>).detail === BINDER_EVENT) {
+        void sync();
+      }
+    };
+
+    const onAuthChange = () => {
+      if (!hasStoredAuthToken()) {
+        setBinders([]);
+        clearCache(cacheKey);
+        setIsLoading(false);
+        return;
+      }
+
+      void sync();
+    };
+
+    window.addEventListener("goodflag:store", onStoreChange);
+    window.addEventListener("goodflag:auth", onAuthChange);
+
+    return () => {
+      active = false;
+      window.removeEventListener("goodflag:store", onStoreChange);
+      window.removeEventListener("goodflag:auth", onAuthChange);
+    };
+  }, [cacheKey, path]);
+
+  return { binders, isLoading };
+}
+
+export function useInboxBinders() {
+  return useBinderCollection("/binders/inbox", INBOX_BINDER_CACHE_KEY);
+}
+
+export function useParticipatedBinders() {
+  return useBinderCollection("/binders/participated", PARTICIPATED_BINDER_CACHE_KEY);
+}
+
 export function usePublicBinder(binderId: string, signerId: string) {
-  const [binder, setBinder] = useState<Binder | null>(() =>
-    readCache<Binder[]>(BINDER_CACHE_KEY, []).find((entry) => entry.id === binderId) ?? null,
-  );
+  const [binder, setBinder] = useState<Binder | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const refresh = useCallback(async () => {
@@ -440,12 +546,15 @@ export function usePublicBinder(binderId: string, signerId: string) {
 }
 
 export function useContacts() {
-  const [contacts, setContacts] = useState<Contact[]>(() =>
-    hasStoredAuthToken() ? readCache(CONTACT_CACHE_KEY, []) : [],
-  );
+  const [contacts, setContacts] = useState<Contact[]>([]);
 
   useEffect(() => {
     let active = true;
+
+    if (hasStoredAuthToken()) {
+      const cached = readCache<Contact[]>(CONTACT_CACHE_KEY, []);
+      if (cached.length) setContacts(cached);
+    }
 
     const sync = async () => {
       try {

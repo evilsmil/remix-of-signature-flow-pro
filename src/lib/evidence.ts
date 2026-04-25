@@ -9,8 +9,13 @@
  * démo : c'est bien adapté au stockage actuel (localStorage).
  */
 import { jsPDF } from "jspdf";
-import type { Binder } from "./mockData";
+import { getApiBaseUrl, getStoredAuthToken } from "./api";
+import type { Binder, BinderSigner, SignatureField } from "./mockData";
 import { formatDateTime } from "./format";
+
+type PdfjsModule = typeof import("pdfjs-dist");
+
+let pdfjsPromise: Promise<PdfjsModule> | null = null;
 
 const KIND_LABEL_FR: Record<string, string> = {
   "binder.created": "Parapheur créé",
@@ -98,98 +103,257 @@ function ensureSpace(doc: jsPDF, y: number, needed = 20): number {
   return y;
 }
 
-/** Document signé — résumé lisible avec chaque signature apposée. */
-export function generateSignedPdf(binder: Binder, lang: string = "fr"): void {
-  const doc = new jsPDF({ unit: "mm", format: "a4" });
-  const hash = binderHash(binder);
-  addHeader(doc, "Document signé", binder.name);
-
-  let y = 38;
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  doc.text("Informations générales", 14, y);
-  y += 6;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.text(`Propriétaire : ${binder.ownerName} <${binder.ownerEmail}>`, 14, y);
-  y += 5;
-  doc.text(`Créé le : ${formatDateTime(binder.createdAt, lang)}`, 14, y);
-  y += 5;
-  if (binder.startedAt)
-    (doc.text(`Démarré le : ${formatDateTime(binder.startedAt, lang)}`, 14, y), (y += 5));
-  if (binder.completedAt)
-    (doc.text(`Terminé le : ${formatDateTime(binder.completedAt, lang)}`, 14, y), (y += 5));
-  doc.text(`Statut : ${binder.status}`, 14, y);
-  y += 5;
-  if (binder.description) {
-    const lines = doc.splitTextToSize(`Description : ${binder.description}`, 180);
-    doc.text(lines, 14, y);
-    y += lines.length * 5;
+async function loadPdfjs() {
+  if (typeof window === "undefined") {
+    throw new Error("Le rendu PDF n'est disponible que dans le navigateur.");
   }
 
-  y += 4;
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.text("Documents", 14, y);
-  y += 6;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  for (const d of binder.documents ?? []) {
-    y = ensureSpace(doc, y);
-    doc.text(`• ${d.name}${d.pages ? ` (${d.pages} p.)` : ""}`, 14, y);
-    y += 5;
+  if (!pdfjsPromise) {
+    pdfjsPromise = (async () => {
+      const [pdfjs, workerUrlMod] = await Promise.all([
+        import("pdfjs-dist"),
+        import("pdfjs-dist/build/pdf.worker.min.mjs?url"),
+      ]);
+      pdfjs.GlobalWorkerOptions.workerSrc = workerUrlMod.default;
+      return pdfjs;
+    })();
   }
 
-  y += 4;
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.text("Signataires", 14, y);
-  y += 6;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  for (const s of binder.signers ?? []) {
-    y = ensureSpace(doc, y, 30);
+  return pdfjsPromise;
+}
+
+async function fetchSourceDocumentBytes(binderId: string, documentId: string) {
+  const authToken = getStoredAuthToken();
+  if (!authToken) {
+    throw new Error("Session expirée. Reconnectez-vous pour télécharger le document signé.");
+  }
+
+  const response = await fetch(
+    `${getApiBaseUrl()}/binders/${binderId}/documents/${documentId}/content`,
+    {
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error("Impossible de récupérer le document source du parapheur.");
+  }
+
+  return new Uint8Array(await response.arrayBuffer());
+}
+
+function getImageFormat(data: string): "PNG" | "JPEG" {
+  return /data:image\/jpe?g/i.test(data) ? "JPEG" : "PNG";
+}
+
+function drawSignedField(
+  doc: jsPDF,
+  field: SignatureField,
+  signer: BinderSigner | undefined,
+  pageWidth: number,
+  pageHeight: number,
+  lang: string,
+) {
+  const signatureValue = field.signatureData ?? signer?.signatureData;
+  if (!signatureValue) {
+    return;
+  }
+
+  const x = field.x * pageWidth;
+  const y = field.y * pageHeight;
+  const width = field.width * pageWidth;
+  const height = field.height * pageHeight;
+  const padding = Math.max(4, Math.min(width, height) * 0.08);
+
+  if (field.kind === "initial") {
     doc.setFont("helvetica", "bold");
-    doc.text(`${s.order}. ${s.name}`, 14, y);
-    doc.setFont("helvetica", "normal");
-    doc.text(s.email, 80, y);
-    y += 5;
-    const status = s.status ?? "pending";
-    doc.setTextColor(100, 116, 139);
-    doc.text(`Statut : ${status}`, 18, y);
-    if (s.signedAt) doc.text(`Signé le ${formatDateTime(s.signedAt, lang)}`, 80, y);
-    if (s.signatureMethod) doc.text(`Méthode : ${s.signatureMethod}`, 150, y);
-    y += 5;
-    if (s.ip) {
-      doc.text(`IP : ${s.ip}`, 18, y);
-      y += 5;
-    }
-    if (s.declinedReason) {
-      const lines = doc.splitTextToSize(`Motif refus : ${s.declinedReason}`, 170);
-      doc.text(lines, 18, y);
-      y += lines.length * 5;
-    }
-    doc.setTextColor(20, 20, 20);
-
-    // Vignette de signature si dispo (data URL)
-    if (s.signatureData && (s.signatureMethod === "drawn" || s.signatureMethod === "image")) {
-      try {
-        doc.addImage(s.signatureData, "PNG", 18, y, 50, 18);
-        y += 22;
-      } catch {
-        y += 4;
-      }
-    } else if (s.signatureData) {
-      doc.setFont("helvetica", "italic");
-      doc.text(`Signature : ${s.signatureData}`, 18, y);
-      doc.setFont("helvetica", "normal");
-      y += 6;
-    }
-    y += 3;
+    doc.setFontSize(Math.max(10, Math.min(18, height * 0.45)));
+    doc.setTextColor(15, 23, 42);
+    doc.text(signatureValue, x + width / 2, y + height / 2 + 4, { align: "center" });
+    return;
   }
 
-  addFooter(doc, hash);
-  doc.save(`${binder.name.replace(/[^a-z0-9-_]+/gi, "_")}_signe.pdf`);
+  const signerName = signer?.name ?? "Signataire";
+  const signedAt = field.signedAt ?? signer?.signedAt;
+  const metadataGap = signedAt ? 18 : 10;
+  const signatureHeight = Math.max(14, height - padding * 2 - metadataGap);
+  const signatureWidth = width - padding * 2;
+  const signatureX = x + padding;
+  const signatureY = y + padding;
+  const signatureCenterX = x + width / 2;
+
+  if (signatureValue.startsWith("data:image/")) {
+    try {
+      doc.addImage(
+        signatureValue,
+        getImageFormat(signatureValue),
+        signatureX,
+        signatureY,
+        signatureWidth,
+        signatureHeight,
+        undefined,
+        "FAST",
+      );
+    } catch {
+      doc.setFont("times", "italic");
+      doc.setFontSize(Math.max(12, Math.min(20, height * 0.34)));
+      doc.text("Signature", signatureCenterX, signatureY + signatureHeight / 2, {
+        align: "center",
+      });
+    }
+  } else {
+    doc.setFont("times", "italic");
+    doc.setFontSize(Math.max(12, Math.min(20, height * 0.34)));
+    const signatureLines = doc.splitTextToSize(signatureValue, signatureWidth).slice(0, 2);
+    const signatureTextY = signatureY + Math.max(14, signatureHeight / 2);
+    doc.text(signatureLines, signatureCenterX, signatureTextY, { align: "center" });
+  }
+
+  const nameY = y + height - padding - (signedAt ? 10 : 2);
+  doc.setTextColor(15, 23, 42);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.text(doc.splitTextToSize(signerName, signatureWidth).slice(0, 1), signatureCenterX, nameY, {
+    align: "center",
+  });
+
+  if (signedAt) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.setTextColor(71, 85, 105);
+    doc.text(formatDateTime(signedAt, lang), signatureCenterX, nameY + 9, {
+      align: "center",
+    });
+  }
+
+  doc.setTextColor(20, 20, 20);
+}
+
+type BuildSignedPdfOptions = {
+  documentIds?: string[];
+};
+
+async function buildSignedPdf(
+  binder: Binder,
+  lang: string,
+  options: BuildSignedPdfOptions = {},
+) {
+  const selectedIds = options.documentIds?.length ? new Set(options.documentIds) : null;
+  const documents = (binder.documents ?? []).filter(
+    (document) => !selectedIds || selectedIds.has(document.id),
+  );
+
+  if (documents.length === 0) {
+    throw new Error("Aucun document final n'est disponible pour ce parapheur.");
+  }
+
+  const { getDocument } = await loadPdfjs();
+  let output: jsPDF | null = null;
+
+  for (const binderDocument of documents) {
+    const sourceBytes = await fetchSourceDocumentBytes(binder.id, binderDocument.id);
+    const loadingTask = getDocument({ data: sourceBytes });
+    const sourcePdf = await loadingTask.promise;
+
+    try {
+      for (let pageNumber = 1; pageNumber <= sourcePdf.numPages; pageNumber += 1) {
+        const sourcePage = await sourcePdf.getPage(pageNumber);
+        const exportViewport = sourcePage.getViewport({ scale: 1 });
+        const renderViewport = sourcePage.getViewport({ scale: 2 });
+        const canvas = window.document.createElement("canvas");
+        canvas.width = Math.ceil(renderViewport.width);
+        canvas.height = Math.ceil(renderViewport.height);
+
+        const context = canvas.getContext("2d");
+        if (!context) {
+          throw new Error("Impossible de préparer le rendu du PDF signé.");
+        }
+
+        await sourcePage.render({ canvas, canvasContext: context, viewport: renderViewport }).promise;
+
+        const pageFormat: [number, number] = [exportViewport.width, exportViewport.height];
+        const orientation = exportViewport.width > exportViewport.height ? "landscape" : "portrait";
+
+        if (!output) {
+          output = new jsPDF({
+            unit: "pt",
+            format: pageFormat,
+            orientation,
+            compress: true,
+          });
+        } else {
+          output.addPage(pageFormat, orientation);
+        }
+
+        output.addImage(
+          canvas.toDataURL("image/png"),
+          "PNG",
+          0,
+          0,
+          exportViewport.width,
+          exportViewport.height,
+          undefined,
+          "FAST",
+        );
+
+        const pageFields = (binder.signatureFields ?? []).filter(
+          (field) =>
+            field.documentId === binderDocument.id &&
+            field.page === pageNumber &&
+            Boolean(field.signatureData),
+        );
+
+        for (const field of pageFields) {
+          const signer = binder.signers?.find((entry) => entry.id === field.signerId);
+          drawSignedField(
+            output,
+            field,
+            signer,
+            exportViewport.width,
+            exportViewport.height,
+            lang,
+          );
+        }
+      }
+    } finally {
+      await sourcePdf.destroy();
+    }
+  }
+
+  if (!output) {
+    throw new Error("Impossible de générer le document signé.");
+  }
+
+  return output;
+}
+
+/** Document signé — reconstitue les pages d'origine avec les zones signées. */
+export async function generateSignedPdf(binder: Binder, lang: string = "fr"): Promise<void> {
+  const output = await buildSignedPdf(binder, lang);
+  output.save(`${binder.name.replace(/[^a-z0-9-_]+/gi, "_")}_signe.pdf`);
+}
+
+export async function openSignedDocumentPdf(
+  binder: Binder,
+  documentId: string,
+  lang: string = "fr",
+): Promise<void> {
+  const output = await buildSignedPdf(binder, lang, { documentIds: [documentId] });
+  const blob = output.output("blob");
+  const blobUrl = window.URL.createObjectURL(blob);
+  const popup = window.open(blobUrl, "_blank", "noopener,noreferrer");
+
+  if (!popup) {
+    const anchor = window.document.createElement("a");
+    anchor.href = blobUrl;
+    anchor.target = "_blank";
+    anchor.rel = "noopener noreferrer";
+    anchor.click();
+  }
+
+  window.setTimeout(() => window.URL.revokeObjectURL(blobUrl), 60_000);
 }
 
 /** Certificat de preuve — timeline complète + hash. */

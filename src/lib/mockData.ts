@@ -14,6 +14,7 @@ export type BinderAttachment = {
 };
 
 export type SignerStatus = "pending" | "signed" | "declined";
+export type InvitationEmailStatus = "pending" | "sent" | "failed";
 
 export type BinderSigner = {
   id: string;
@@ -33,6 +34,12 @@ export type BinderSigner = {
   declinedReason?: string;
   /** IP simulée capturée lors de la signature/refus. */
   ip?: string;
+  /** État de l'envoi du mail d'invitation initial. */
+  inviteEmailStatus?: InvitationEmailStatus;
+  /** Date d'envoi du mail d'invitation, lorsqu'il a abouti. */
+  inviteEmailSentAt?: string;
+  /** Dernière erreur d'envoi connue pour l'invitation initiale. */
+  inviteEmailError?: string;
 };
 
 /** Catégories d'événements applicatifs visibles dans la timeline. */
@@ -101,6 +108,7 @@ export type BinderNotifications = {
   onStart: boolean;
   onComplete: boolean;
   reminders: boolean;
+  reminderEveryHours?: number;
 };
 
 export type Binder = {

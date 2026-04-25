@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Inbox as InboxIcon, Pen, Zap, AlertCircle } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
-import { useBinders } from "@/lib/store";
+import { useBinders, useInboxBinders } from "@/lib/store";
 import { getSession } from "@/lib/auth";
 import { useMySignature } from "@/lib/mySignature";
 import { formatDateTime } from "@/lib/format";
@@ -31,7 +31,8 @@ type InboxItem = {
 
 function InboxPage() {
   const { t, i18n } = useTranslation();
-  const { binders, signAs } = useBinders();
+  const { binders, isLoading } = useInboxBinders();
+  const { signAs } = useBinders();
   const navigate = useNavigate();
   const session = getSession();
   const email = session?.email ?? "";
@@ -85,6 +86,16 @@ function InboxPage() {
       params: { binderId: item.binder.id, signerId: item.signer.id },
     });
   };
+
+  if (isLoading) {
+    return (
+      <AppShell>
+        <div className="rounded-lg border bg-card p-10 text-center text-sm text-muted-foreground">
+          Chargement…
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell>

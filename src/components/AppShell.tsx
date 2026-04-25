@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { Home, FileText, FilePlus2, Users, LogOut, Settings, Menu, Globe, Inbox, PenLine, Send } from "lucide-react";
+import { Home, FileText, FilePlus2, Users, LogOut, Settings, Menu, Globe, Inbox, PenLine } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
 import { Logo } from "./Logo";
@@ -98,7 +98,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isHome = path === "/";
   const isBinders = path.startsWith("/binders");
   const isInbox = path.startsWith("/inbox");
-  const isSent = path.startsWith("/sent");
   const isDocs = path.startsWith("/documents");
   const isContacts = path.startsWith("/contacts");
   const isMySig = path.startsWith("/my-signature");
@@ -142,7 +141,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <NavItem to="/" icon={Home} label={t("nav.home")} active={isHome} />
           <NavItem to="/binders/all" icon={FilePlus2} label={t("nav.binders")} active={isBinders} />
           <NavItem to="/inbox" icon={Inbox} label={t("nav.inbox")} active={isInbox} />
-          <NavItem to="/sent" icon={Send} label={t("nav.sent")} active={isSent} />
           <NavItem to="/documents" icon={FileText} label={t("nav.documents")} active={isDocs} />
           <NavItem to="/contacts" icon={Users} label={t("nav.contacts")} active={isContacts} />
           <NavItem to="/my-signature" icon={PenLine} label={t("nav.mySignature")} active={isMySig} />
@@ -166,9 +164,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     ? t("binders.title")
                     : isInbox
                       ? t("inbox.title")
-                      : isSent
-                        ? t("sent.title")
-                        : isDocs
+                      : isDocs
                           ? t("documents.title")
                           : isContacts
                             ? t("contacts.title")

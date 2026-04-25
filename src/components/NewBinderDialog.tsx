@@ -37,6 +37,11 @@ import {
 import { cn } from "@/lib/utils";
 import { DocumentPagePreview } from "./DocumentPagePreview";
 
+type LocalBinderDocument = BinderDocument & {
+  file?: File;
+  mimeType?: string;
+};
+
 type StepKey =
   | "general"
   | "documents"
@@ -63,6 +68,17 @@ const ZONE_H = 0.06;
 const INITIAL_W = 0.09;
 const INITIAL_H = 0.05;
 
+async function fileToBase64(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer();
+  let binary = "";
+  const bytes = new Uint8Array(buffer);
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
 export function NewBinderDialog({
   open,
   onOpenChange,
@@ -80,7 +96,7 @@ export function NewBinderDialog({
   const [description, setDescription] = useState("");
   const [group, setGroup] = useState("");
   const [consolidation, setConsolidation] = useState(false);
-  const [documents, setDocuments] = useState<BinderDocument[]>([]);
+  const [documents, setDocuments] = useState<LocalBinderDocument[]>([]);
   const [attachments, setAttachments] = useState<BinderAttachment[]>([]);
   const [signers, setSigners] = useState<BinderSigner[]>([]);
   const [fields, setFields] = useState<SignatureField[]>([]);
@@ -88,6 +104,7 @@ export function NewBinderDialog({
     onStart: true,
     onComplete: true,
     reminders: false,
+    reminderEveryHours: 24,
   });
 
   // Placement step state
@@ -109,7 +126,7 @@ export function NewBinderDialog({
     setAttachments([]);
     setSigners([]);
     setFields([]);
-    setNotif({ onStart: true, onComplete: true, reminders: false });
+    setNotif({ onStart: true, onComplete: true, reminders: false, reminderEveryHours: 24 });
     setActiveSignerId(null);
     setActiveDocId(null);
     setActivePage(1);
@@ -158,6 +175,16 @@ export function NewBinderDialog({
 
     setIsSubmitting(true);
     try {
+      const documentPayloads = await Promise.all(
+        documents.map(async ({ id, name: documentName, size, pages, file }) => ({
+          id,
+          name: documentName,
+          size,
+          pages,
+          content: file ? await fileToBase64(file) : undefined,
+        })),
+      );
+
       const binder = await create({
         name: name.trim(),
         description: description.trim() || undefined,
@@ -165,7 +192,7 @@ export function NewBinderDialog({
         ownerName: session?.name ?? "User",
         ownerEmail: session?.email ?? "user@example.com",
         ownerInitials: session?.initials ?? "US",
-        documents,
+        documents: documentPayloads,
         attachments,
         signers: enrichedSigners,
         signatureFields: fields,
@@ -183,13 +210,30 @@ export function NewBinderDialog({
 
   const onPickDocs = (files: FileList | null) => {
     if (!files) return;
-    const next: BinderDocument[] = Array.from(files).map((f, i) => ({
-      id: `d_${Date.now()}_${i}`,
-      name: f.name,
-      size: f.size,
-      pages: 1 + ((f.size ?? 1000) % 3), // mock 1-3 pages
+    const picked = Array.from(files);
+    const accepted = picked.filter(
+      (file) => file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf"),
+    );
+
+    if (accepted.length !== picked.length) {
+      toast.error("Seuls les fichiers PDF peuvent etre ajoutes comme documents a signer.");
+    }
+
+    if (accepted.length === 0) {
+      return;
+    }
+
+    const next: LocalBinderDocument[] = accepted.map((file, index) => ({
+      id: `d_${Date.now()}_${index}`,
+      name: file.name,
+      size: file.size,
+      pages: 1,
+      file,
+      mimeType: file.type,
     }));
+
     setDocuments((prev) => [...prev, ...next]);
+    setActiveDocId((current) => current ?? next[0]?.id ?? null);
   };
 
   const onPickAttachments = (files: FileList | null) => {
@@ -346,7 +390,8 @@ export function NewBinderDialog({
               <p className="text-sm text-muted-foreground">{t("newBinder.documentsHelp")}</p>
               <UploadBox
                 label={t("newBinder.addDocument")}
-                accept=".pdf,.docx,.doc,.txt"
+                accept=".pdf,application/pdf"
+                hint="PDF"
                 onPick={onPickDocs}
                 icon={FileText}
               />
@@ -363,7 +408,14 @@ export function NewBinderDialog({
                       name={d.name}
                       size={d.size}
                       onRemove={() => {
-                        setDocuments((p) => p.filter((x) => x.id !== d.id));
+                        setDocuments((p) => {
+                          const next = p.filter((x) => x.id !== d.id);
+                          if (activeDocId === d.id) {
+                            setActiveDocId(next[0]?.id ?? null);
+                            setActivePage(1);
+                          }
+                          return next;
+                        });
                         setFields((p) => p.filter((f) => f.documentId !== d.id));
                       }}
                     />
@@ -602,6 +654,15 @@ export function NewBinderDialog({
                         documentName={activeDoc.name}
                         page={activePage}
                         totalPages={activeDoc.pages ?? 1}
+                        documentFile={activeDoc.file}
+                        onTotalPagesChange={(pages) => {
+                          setDocuments((prev) =>
+                            prev.map((document) =>
+                              document.id === activeDoc.id ? { ...document, pages } : document,
+                            ),
+                          );
+                          setActivePage((current) => Math.min(current, pages));
+                        }}
                         onClick={activeSigner ? placePage : undefined}
                       >
                         {fieldsOnPage.map((f) => {
@@ -649,6 +710,27 @@ export function NewBinderDialog({
                 checked={notif.reminders}
                 onChange={(v) => setNotif((n) => ({ ...n, reminders: v }))}
               />
+              {notif.reminders && (
+                <Field label={t("newBinder.reminderFrequency")}>
+                  <div className="space-y-2">
+                    <Input
+                      type="number"
+                      min={1}
+                      value={notif.reminderEveryHours ?? 24}
+                      onChange={(e) =>
+                        setNotif((current) => ({
+                          ...current,
+                          reminderEveryHours: Math.max(1, Number(e.target.value) || 24),
+                        }))
+                      }
+                      className="max-w-[180px]"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {t("newBinder.reminderFrequencyHelp")}
+                    </p>
+                  </div>
+                </Field>
+              )}
             </div>
           )}
 
@@ -692,7 +774,10 @@ export function NewBinderDialog({
                   [
                     notif.onStart && t("newBinder.notifyOnStart"),
                     notif.onComplete && t("newBinder.notifyOnComplete"),
-                    notif.reminders && t("newBinder.notifyOnReminder"),
+                    notif.reminders &&
+                      `${t("newBinder.notifyOnReminder")} (${t("newBinder.reminderEveryHours", {
+                        count: notif.reminderEveryHours ?? 24,
+                      })})`,
                   ]
                     .filter(Boolean)
                     .join(" · ") || "—"
@@ -768,11 +853,13 @@ function ReviewRow({ label, value }: { label: string; value: string }) {
 function UploadBox({
   label,
   accept,
+  hint,
   onPick,
   icon: Icon,
 }: {
   label: string;
   accept: string;
+  hint?: string;
   onPick: (files: FileList | null) => void;
   icon: React.ComponentType<{ className?: string }>;
 }) {
@@ -780,7 +867,7 @@ function UploadBox({
     <label className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed border-action/40 bg-action/5 p-8 text-center transition hover:bg-action/10">
       <Icon className="h-6 w-6 text-action" />
       <span className="text-sm font-medium text-action">{label}</span>
-      <span className="text-xs text-muted-foreground">PDF, DOCX, ZIP…</span>
+      <span className="text-xs text-muted-foreground">{hint ?? "PDF, DOCX, ZIP…"}</span>
       <input
         type="file"
         multiple

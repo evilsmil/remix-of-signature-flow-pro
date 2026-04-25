@@ -26,15 +26,19 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { DocumentPagePreview } from "@/components/DocumentPagePreview";
 import { SignaturePad, type SignatureResult } from "@/components/SignaturePad";
-import { apiFetch, getErrorMessage } from "@/lib/api";
+import { apiFetch, getApiBaseUrl, getErrorMessage } from "@/lib/api";
 import { getSession, logout } from "@/lib/auth";
+import { formatDateTime } from "@/lib/format";
 import { getSignerInvitation, useBinders, type BinderInvitation } from "@/lib/store";
+import { getMySignature, type SavedSignature } from "@/lib/mySignature";
 import { getInitialsFromName, type Binder, type SignatureField } from "@/lib/mockData";
 import { cn } from "@/lib/utils";
 
 const searchSchema = z.object({
   token: z.string().optional(),
 });
+
+type PendingSignature = SignatureResult & { at: string };
 
 export const Route = createFileRoute("/sign/$binderId/$signerId")({
   validateSearch: searchSchema,
@@ -49,6 +53,7 @@ function SignPage() {
   const { signAs, declineAs, markSignerViewed } = useBinders();
   const navigate = useNavigate();
   const session = getSession();
+  const sessionEmail = session?.email ?? null;
   const [binder, setBinder] = useState<Binder | null>(null);
   const [invitation, setInvitation] = useState<BinderInvitation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -72,7 +77,7 @@ function SignPage() {
           setInvitation(nextInvitation);
         }
 
-        if (!session) {
+        if (!sessionEmail) {
           if (active) {
             setBinder(null);
           }
@@ -99,8 +104,7 @@ function SignPage() {
     return () => {
       active = false;
     };
-  }, [binderId, session, signerId, token]);
-
+  }, [binderId, sessionEmail, signerId, token]);
   useEffect(() => {
     if (binder && signer && signer.status !== "signed" && !signer.viewedAt) {
       void markSignerViewed(binder.id, signer.id)
@@ -136,16 +140,72 @@ function SignPage() {
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [activePage, setActivePage] = useState(1);
   const [activeFieldId, setActiveFieldId] = useState<string | null>(null);
-  const [pendingSignatures, setPendingSignatures] = useState<Record<string, SignatureResult>>(
+  const [pendingSignatures, setPendingSignatures] = useState<Record<string, PendingSignature>>(
     {},
   );
   const [done, setDone] = useState(false);
+  const [isSigning, setIsSigning] = useState(false);
+  const [activeDocFile, setActiveDocFile] = useState<File | null>(null);
+  const [savedSignature, setSavedSignature] = useState<SavedSignature | null>(null);
 
   useEffect(() => {
     if (binder?.documents?.[0] && !activeDocId) {
       setActiveDocId(binder.documents[0].id);
     }
   }, [binder, activeDocId]);
+
+  // Fetch raw PDF content for the active document so users can see what they sign.
+  useEffect(() => {
+    let active = true;
+    setActiveDocFile(null);
+
+    if (!binder || !activeDocId) return undefined;
+
+    const activeDoc = binder.documents?.find((d) => d.id === activeDocId);
+    if (!activeDoc) return undefined;
+
+    const baseUrl = getApiBaseUrl();
+    const headers: Record<string, string> = {};
+
+    let url: string;
+    if (sessionEmail) {
+      url = `${baseUrl}/binders/${binderId}/documents/${activeDocId}/content`;
+      const stored = typeof window !== "undefined"
+        ? localStorage.getItem("usign.authToken")
+        : null;
+      if (stored) headers.Authorization = `Bearer ${stored}`;
+    } else if (token) {
+      url = `${baseUrl}/public/binders/${binderId}/signers/${signerId}/documents/${activeDocId}/content?token=${encodeURIComponent(token)}`;
+    } else {
+      return undefined;
+    }
+
+    void fetch(url, { headers })
+      .then(async (response) => {
+        if (!response.ok) return null;
+        const blob = await response.blob();
+        return new File([blob], activeDoc.name, { type: blob.type || "application/pdf" });
+      })
+      .then((file) => {
+        if (active && file) setActiveDocFile(file);
+      })
+      .catch(() => undefined);
+
+    return () => {
+      active = false;
+    };
+  }, [binder, activeDocId, binderId, signerId, sessionEmail, token]);
+
+  // Preload the user's saved signature so they don't have to draw it again.
+  useEffect(() => {
+    if (!sessionEmail) {
+      setSavedSignature(null);
+      return;
+    }
+    void getMySignature()
+      .then((sig) => setSavedSignature(sig))
+      .catch(() => setSavedSignature(null));
+  }, [sessionEmail]);
 
   const myFields: SignatureField[] = useMemo(
     () => binder?.signatureFields?.filter((f) => f.signerId === signerId) ?? [],
@@ -318,6 +378,8 @@ function SignPage() {
   );
 
   const finalize = async () => {
+    if (isSigning) return;
+
     // Use the most recent applied "signature" entry as canonical, but pass
     // per-field overrides so that "initial" zones keep their initials text.
     const entries = Object.entries(pendingSignatures);
@@ -335,6 +397,7 @@ function SignPage() {
     for (const [fid, res] of entries) {
       fieldOverrides[fid] = { method: res.method, signatureData: res.data };
     }
+    setIsSigning(true);
     try {
       const nextBinder = await signAs(binder.id, signer.id, {
         method: canonical.method,
@@ -345,6 +408,8 @@ function SignPage() {
       setDone(true);
     } catch (error) {
       toast.error(getErrorMessage(error, "Signature impossible"));
+    } finally {
+      setIsSigning(false);
     }
   };
 
@@ -417,6 +482,7 @@ function SignPage() {
                     documentName={activeDoc.name}
                     page={activePage}
                     totalPages={activeDoc.pages ?? 1}
+                    documentFile={activeDocFile ?? undefined}
                   >
                     {fieldsOnPage.map((f) => {
                       const isMine = f.signerId === signerId;
@@ -431,21 +497,34 @@ function SignPage() {
                           // Auto-fill the initial (paraphe) zone with the signer's initials.
                           setPendingSignatures((prev) => ({
                             ...prev,
-                            [f.id]: { method: "typed", data: initialsText },
+                            [f.id]: { method: "typed", data: initialsText, at: new Date().toISOString() },
+                          }));
+                        } else if (savedSignature) {
+                          // Reuse the user's saved signature instead of asking again.
+                          setPendingSignatures((prev) => ({
+                            ...prev,
+                            [f.id]: {
+                              method: savedSignature.method,
+                              data: savedSignature.data,
+                              at: new Date().toISOString(),
+                            },
                           }));
                         } else {
                           setActiveFieldId(f.id);
                         }
                       };
-                      const filledMethod = pendingSignatures[f.id]?.method;
-                      const filledData = pendingSignatures[f.id]?.data;
+                      const pendingSignature = pendingSignatures[f.id];
+                      const filledMethod = pendingSignature?.method;
+                      const filledData = pendingSignature?.data ?? f.signatureData;
+                      const filledAt = pendingSignature?.at ?? f.signedAt ?? fSigner?.signedAt;
+                      const displaysImage = Boolean(filledData?.startsWith("data:image/"));
                       return (
                         <button
                           key={f.id}
                           onClick={onZoneClick}
                           disabled={!isMine || filled}
                           className={cn(
-                            "absolute flex items-center justify-center overflow-hidden rounded border-2 text-[10px] font-semibold uppercase shadow-sm transition",
+                            "absolute overflow-hidden rounded border-2 p-1 text-[10px] shadow-sm transition",
                             isMine && !filled && "cursor-pointer animate-pulse",
                             !isMine && "cursor-not-allowed opacity-60",
                           )}
@@ -461,34 +540,48 @@ function SignPage() {
                         >
                           {filled ? (
                             isInitial ? (
-                              <span
-                                className="font-bold tracking-widest text-slate-900"
-                                style={{ fontSize: "14px" }}
-                              >
-                                {filledData}
-                              </span>
-                            ) : filledMethod === "drawn" || filledMethod === "image" ? (
-                              <img
-                                src={filledData}
-                                alt=""
-                                className="max-h-full max-w-full object-contain"
-                              />
+                              <div className="flex h-full items-center justify-center">
+                                <span
+                                  className="font-bold tracking-widest text-slate-900"
+                                  style={{ fontSize: "14px" }}
+                                >
+                                  {filledData}
+                                </span>
+                              </div>
                             ) : (
-                              <span
-                                className="truncate px-1 normal-case text-slate-900"
-                                style={{
-                                  fontFamily:
-                                    filledMethod === "typed"
-                                      ? '"Brush Script MT", "Snell Roundhand", cursive'
-                                      : undefined,
-                                  fontSize: "13px",
-                                }}
-                              >
-                                {filledData}
-                              </span>
+                              <div className="flex h-full flex-col justify-between text-left normal-case text-slate-900">
+                                <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden">
+                                  {displaysImage ? (
+                                    <img
+                                      src={filledData}
+                                      alt=""
+                                      className="max-h-full max-w-full object-contain"
+                                    />
+                                  ) : (
+                                    <span
+                                      className="max-w-full truncate px-1"
+                                      style={{
+                                        fontFamily:
+                                          filledMethod === "typed"
+                                            ? '"Brush Script MT", "Snell Roundhand", cursive'
+                                            : undefined,
+                                        fontSize: "13px",
+                                      }}
+                                    >
+                                      {filledData}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="border-t border-slate-200/80 px-1 pt-1 text-[8px] leading-tight text-slate-700">
+                                  <div className="truncate font-semibold">{fSigner?.name}</div>
+                                  {filledAt && (
+                                    <div className="truncate">{formatDateTime(filledAt, i18n.language)}</div>
+                                  )}
+                                </div>
+                              </div>
                             )
                           ) : (
-                            <span className="flex items-center gap-1">
+                            <span className="flex h-full items-center justify-center gap-1 font-semibold uppercase">
                               <Pen className="h-2.5 w-2.5" />
                               {isMine
                                 ? isInitial
@@ -603,10 +696,12 @@ function SignPage() {
 
             <Button
               onClick={finalize}
-              disabled={!allFilled}
+              disabled={!allFilled || isSigning}
+              aria-busy={isSigning}
               className="mt-4 w-full bg-action text-action-foreground hover:opacity-90"
             >
-              <ShieldCheck className="mr-2 h-4 w-4" /> {t("sign.finalize")}
+              <ShieldCheck className="mr-2 h-4 w-4" />
+              {isSigning ? `${t("sign.finalize")}…` : t("sign.finalize")}
             </Button>
 
             <Button
@@ -644,7 +739,10 @@ function SignPage() {
               signerName={signer.name}
               onCancel={() => setActiveFieldId(null)}
               onConfirm={(r) => {
-                setPendingSignatures((prev) => ({ ...prev, [activeField.id]: r }));
+                setPendingSignatures((prev) => ({
+                  ...prev,
+                  [activeField.id]: { ...r, at: new Date().toISOString() },
+                }));
                 setActiveFieldId(null);
               }}
             />
