@@ -1,9 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  apiFetch,
-  hasStoredAuthToken,
-  notifyStoreChange,
-} from "./api";
+import { apiFetch, hasStoredAuthToken, notifyStoreChange } from "./api";
 import type {
   AuditEvent,
   Binder,
@@ -95,7 +91,10 @@ function sortContacts(items: Contact[]) {
 
 function replaceBinderCache(nextBinder: Binder) {
   const current = readCache<Binder[]>(BINDER_CACHE_KEY, []);
-  const next = sortBinders([nextBinder, ...current.filter((binder) => binder.id !== nextBinder.id)]);
+  const next = sortBinders([
+    nextBinder,
+    ...current.filter((binder) => binder.id !== nextBinder.id),
+  ]);
   writeCache(BINDER_CACHE_KEY, next);
   return next;
 }
@@ -170,11 +169,7 @@ export async function getPublicBinder(binderId: string, signerId: string) {
   });
 }
 
-export async function getSignerInvitation(
-  binderId: string,
-  signerId: string,
-  token: string,
-) {
+export async function getSignerInvitation(binderId: string, signerId: string, token: string) {
   return apiFetch<BinderInvitation>(
     `/public/binders/${binderId}/signers/${signerId}/invitation?token=${encodeURIComponent(token)}`,
     {
@@ -208,11 +203,7 @@ export async function declinePublicSigner(binderId: string, signerId: string, re
   });
 }
 
-export async function signPublicSigner(
-  binderId: string,
-  signerId: string,
-  payload: SignPayload,
-) {
+export async function signPublicSigner(binderId: string, signerId: string, payload: SignPayload) {
   return mutatePublicBinder(`/public/binders/${binderId}/signers/${signerId}/sign`, payload);
 }
 

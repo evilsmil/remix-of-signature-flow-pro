@@ -132,8 +132,9 @@ function DocumentsPage() {
     return records.filter((record) => {
       if (!normalizedQuery) return true;
 
-      return [record.name, record.binderName, record.ownerName, record.ownerEmail]
-        .some((value) => value.toLowerCase().includes(normalizedQuery));
+      return [record.name, record.binderName, record.ownerName, record.ownerEmail].some((value) =>
+        value.toLowerCase().includes(normalizedQuery),
+      );
     });
   }, [records, query]);
 
@@ -190,9 +191,13 @@ function DocumentsPage() {
               <thead className="border-b bg-muted/40 text-[11px] uppercase tracking-wider text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3 text-left font-semibold">{t("documents.cols.name")}</th>
-                  <th className="px-4 py-3 text-left font-semibold">{t("documents.cols.binder")}</th>
+                  <th className="px-4 py-3 text-left font-semibold">
+                    {t("documents.cols.binder")}
+                  </th>
                   <th className="px-4 py-3 text-left font-semibold">{t("documents.cols.scope")}</th>
-                  <th className="px-4 py-3 text-left font-semibold">{t("documents.cols.updated")}</th>
+                  <th className="px-4 py-3 text-left font-semibold">
+                    {t("documents.cols.updated")}
+                  </th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -257,7 +262,9 @@ function DocumentsPage() {
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3 align-top text-muted-foreground">{fmt(document.updatedAt)}</td>
+                    <td className="px-4 py-3 align-top text-muted-foreground">
+                      {fmt(document.updatedAt)}
+                    </td>
                     <td className="px-4 py-3 align-top">
                       <div className="flex justify-end gap-2">
                         <Button
@@ -267,7 +274,9 @@ function DocumentsPage() {
                           disabled={openingKey === document.key}
                         >
                           <FolderOpen className="mr-1.5 h-3.5 w-3.5" />
-                          {openingKey === document.key ? t("documents.opening") : t("documents.open")}
+                          {openingKey === document.key
+                            ? t("documents.opening")
+                            : t("documents.open")}
                         </Button>
                       </div>
                     </td>

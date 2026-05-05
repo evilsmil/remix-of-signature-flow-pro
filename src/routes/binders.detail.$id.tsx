@@ -539,12 +539,16 @@ function BinderDetail() {
                             ) : (
                               <div className="text-xs text-muted-foreground">{s.email}</div>
                             )}
-                            {!isEditingSignerEmail && s.inviteEmailStatus === "sent" && s.inviteEmailSentAt ? (
+                            {!isEditingSignerEmail &&
+                            s.inviteEmailStatus === "sent" &&
+                            s.inviteEmailSentAt ? (
                               <div className="mt-1 text-[11px] text-muted-foreground">
                                 {t("detail.inviteEmailSentAt", { date: fmt(s.inviteEmailSentAt) })}
                               </div>
                             ) : null}
-                            {!isEditingSignerEmail && s.inviteEmailStatus === "failed" && s.inviteEmailError ? (
+                            {!isEditingSignerEmail &&
+                            s.inviteEmailStatus === "failed" &&
+                            s.inviteEmailError ? (
                               <div className="mt-1 text-[11px] text-destructive">
                                 {s.inviteEmailError}
                               </div>
@@ -824,11 +828,7 @@ function BinderDetail() {
                       <FileSignature className="h-4 w-4" />
                       {t("downloads.signedPdf")}
                     </Button>
-                    <Button
-                      onClick={onDownloadCertificate}
-                      variant="outline"
-                      className="gap-1.5"
-                    >
+                    <Button onClick={onDownloadCertificate} variant="outline" className="gap-1.5">
                       <ShieldCheck className="h-4 w-4" />
                       {t("downloads.certificate")}
                     </Button>
@@ -981,9 +981,7 @@ function AuditTimeline({
                 <span className={`text-sm font-medium ${tone}`}>
                   {t(`history.kinds.${ev.kind}` as never) || ev.kind}
                 </span>
-                <span className="text-xs text-muted-foreground">
-                  {formatDateTime(ev.at, lang)}
-                </span>
+                <span className="text-xs text-muted-foreground">{formatDateTime(ev.at, lang)}</span>
               </div>
               {(ev.actorName || ev.actorEmail) && (
                 <div className="mt-0.5 text-xs text-muted-foreground">
@@ -998,9 +996,7 @@ function AuditTimeline({
                   ) : null}
                 </div>
               )}
-              {ev.message && (
-                <p className="mt-1 text-xs text-foreground/80">{ev.message}</p>
-              )}
+              {ev.message && <p className="mt-1 text-xs text-foreground/80">{ev.message}</p>}
               {ev.ip && (
                 <p className="mt-0.5 text-[11px] text-muted-foreground">
                   {t("history.ip")} : {ev.ip}

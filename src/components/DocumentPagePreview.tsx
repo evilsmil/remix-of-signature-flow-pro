@@ -149,11 +149,10 @@ export function DocumentPagePreview({
       >
         {hasPdfSource ? (
           <>
-            <canvas
-              ref={canvasRef}
-              className={cn("block w-full", !isPdfRendered && "hidden")}
-            />
-            {!isPdfRendered && <div className="aspect-[1/1.414] w-full animate-pulse bg-slate-100" />}
+            <canvas ref={canvasRef} className={cn("block w-full", !isPdfRendered && "hidden")} />
+            {!isPdfRendered && (
+              <div className="aspect-[1/1.414] w-full animate-pulse bg-slate-100" />
+            )}
             {isPdfRendered && (
               <>
                 <div className="pointer-events-none absolute left-3 top-3 rounded-full bg-white/90 px-2 py-1 text-[10px] font-medium text-slate-600 shadow-sm">

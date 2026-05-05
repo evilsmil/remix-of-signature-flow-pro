@@ -1,15 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { CheckCircle2, Circle, PenLine, UserPlus, FilePlus2, UserCog, X, Sparkles } from "lucide-react";
+import {
+  CheckCircle2,
+  Circle,
+  PenLine,
+  UserPlus,
+  FilePlus2,
+  UserCog,
+  X,
+  Sparkles,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getSession } from "@/lib/auth";
 import { useMySignature } from "@/lib/mySignature";
 import { useBinders, useContacts } from "@/lib/store";
-import {
-  dismissOnboarding,
-  isOnboardingDismissed,
-} from "@/lib/onboarding";
+import { dismissOnboarding, isOnboardingDismissed } from "@/lib/onboarding";
 import { cn } from "@/lib/utils";
 
 type StepKey = "signature" | "contact" | "binder" | "profile";
@@ -127,9 +133,7 @@ export function OnboardingChecklist({
             <h2 className="text-base font-semibold text-foreground sm:text-lg">
               {t("onboarding.title")}
             </h2>
-            <p className="text-xs text-muted-foreground sm:text-sm">
-              {t("onboarding.subtitle")}
-            </p>
+            <p className="text-xs text-muted-foreground sm:text-sm">{t("onboarding.subtitle")}</p>
           </div>
         </div>
 

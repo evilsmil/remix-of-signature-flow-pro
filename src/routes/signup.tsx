@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Globe } from "lucide-react";
 import { toast } from "sonner";
@@ -21,7 +21,11 @@ export const Route = createFileRoute("/signup")({
   head: () => ({
     meta: [
       { title: "Créer un compte — Usign" },
-      { name: "description", content: "Créez votre compte Usign en quelques secondes pour signer vos documents en ligne." },
+      {
+        name: "description",
+        content:
+          "Créez votre compte Usign en quelques secondes pour signer vos documents en ligne.",
+      },
     ],
   }),
   component: SignupPage,
@@ -37,20 +41,20 @@ function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const redirectAfterAuth = () => {
+  const redirectAfterAuth = useCallback(() => {
     if (typeof window !== "undefined" && redirect?.startsWith("/")) {
       window.location.assign(redirect);
       return;
     }
 
     navigate({ to: "/" });
-  };
+  }, [navigate, redirect]);
 
   useEffect(() => {
     if (getSession()) {
       redirectAfterAuth();
     }
-  }, [navigate, redirect]);
+  }, [redirectAfterAuth]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,11 +87,13 @@ function SignupPage() {
         <Logo />
         <div className="space-y-4">
           <h2 className="text-4xl font-semibold leading-tight">
-            Rejoignez Usign<br />en quelques secondes.
+            Rejoignez Usign
+            <br />
+            en quelques secondes.
           </h2>
           <p className="max-w-md text-sidebar-foreground/70">
-            Créez votre compte pour préparer vos parapheurs, inviter vos signataires et
-            suivre vos signatures en temps réel.
+            Créez votre compte pour préparer vos parapheurs, inviter vos signataires et suivre vos
+            signatures en temps réel.
           </p>
         </div>
         <div className="text-xs text-sidebar-foreground/60">© Usign</div>
@@ -162,7 +168,11 @@ function SignupPage() {
                 />
               </div>
             </div>
-            <Button type="submit" disabled={isSubmitting} className="w-full bg-action text-action-foreground hover:opacity-90">
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full bg-action text-action-foreground hover:opacity-90"
+            >
               {t("auth.signupSubmit")}
             </Button>
             <p className="text-center text-sm text-muted-foreground">

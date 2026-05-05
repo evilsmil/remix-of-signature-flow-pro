@@ -21,7 +21,9 @@ function ContactsPage() {
   const filtered = useMemo(
     () =>
       contacts.filter((c) =>
-        `${c.firstName} ${c.lastName} ${c.email} ${c.company ?? ""}`.toLowerCase().includes(query.toLowerCase()),
+        `${c.firstName} ${c.lastName} ${c.email} ${c.company ?? ""}`
+          .toLowerCase()
+          .includes(query.toLowerCase()),
       ),
     [contacts, query],
   );
@@ -92,7 +94,9 @@ function ContactsPage() {
                   <th className="px-4 py-3 text-left font-semibold">{t("contacts.cols.name")}</th>
                   <th className="px-4 py-3 text-left font-semibold">{t("contacts.cols.email")}</th>
                   <th className="px-4 py-3 text-left font-semibold">{t("contacts.cols.phone")}</th>
-                  <th className="px-4 py-3 text-left font-semibold">{t("contacts.cols.company")}</th>
+                  <th className="px-4 py-3 text-left font-semibold">
+                    {t("contacts.cols.company")}
+                  </th>
                   <th />
                 </tr>
               </thead>

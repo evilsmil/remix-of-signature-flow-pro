@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Globe } from "lucide-react";
 import { toast } from "sonner";
@@ -21,7 +21,10 @@ export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
       { title: "Connexion — Usign" },
-      { name: "description", content: "Connectez-vous à votre espace Usign de signature électronique." },
+      {
+        name: "description",
+        content: "Connectez-vous à votre espace Usign de signature électronique.",
+      },
     ],
   }),
   component: LoginPage,
@@ -35,20 +38,20 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const redirectAfterAuth = () => {
+  const redirectAfterAuth = useCallback(() => {
     if (typeof window !== "undefined" && redirect?.startsWith("/")) {
       window.location.assign(redirect);
       return;
     }
 
     navigate({ to: "/" });
-  };
+  }, [navigate, redirect]);
 
   useEffect(() => {
     if (getSession()) {
       redirectAfterAuth();
     }
-  }, [navigate, redirect]);
+  }, [redirectAfterAuth]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,11 +80,13 @@ function LoginPage() {
         <Logo />
         <div className="space-y-4">
           <h2 className="text-4xl font-semibold leading-tight">
-            La signature électronique<br />sécurisée pour vos équipes.
+            La signature électronique
+            <br />
+            sécurisée pour vos équipes.
           </h2>
           <p className="max-w-md text-sidebar-foreground/70">
-            Centralisez vos parapheurs, suivez l'avancement des signatures et archivez vos
-            documents en toute sérénité avec Usign.
+            Centralisez vos parapheurs, suivez l'avancement des signatures et archivez vos documents
+            en toute sérénité avec Usign.
           </p>
         </div>
         <div className="text-xs text-sidebar-foreground/60">© Usign</div>
@@ -127,12 +132,19 @@ function LoginPage() {
                 />
               </div>
               <div className="text-right">
-                <Link to="/forgot-password" className="text-sm font-medium text-action hover:underline">
+                <Link
+                  to="/forgot-password"
+                  className="text-sm font-medium text-action hover:underline"
+                >
                   {t("auth.forgotPasswordLink")}
                 </Link>
               </div>
             </div>
-            <Button type="submit" disabled={isSubmitting} className="w-full bg-action text-action-foreground hover:opacity-90">
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full bg-action text-action-foreground hover:opacity-90"
+            >
               {t("auth.submit")}
             </Button>
             <p className="text-center text-sm text-muted-foreground">

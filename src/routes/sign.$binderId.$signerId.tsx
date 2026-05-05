@@ -114,8 +114,11 @@ function SignPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [binder?.id, signer?.id]);
 
-  const redirectPath = invitation?.signPath
-    ?? (token ? `/sign/${binderId}/${signerId}?token=${encodeURIComponent(token)}` : `/sign/${binderId}/${signerId}`);
+  const redirectPath =
+    invitation?.signPath ??
+    (token
+      ? `/sign/${binderId}/${signerId}?token=${encodeURIComponent(token)}`
+      : `/sign/${binderId}/${signerId}`);
   const mustSwitchAccount = Boolean(
     session && invitation && session.email.toLowerCase() !== invitation.signerEmail.toLowerCase(),
   );
@@ -140,9 +143,7 @@ function SignPage() {
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [activePage, setActivePage] = useState(1);
   const [activeFieldId, setActiveFieldId] = useState<string | null>(null);
-  const [pendingSignatures, setPendingSignatures] = useState<Record<string, PendingSignature>>(
-    {},
-  );
+  const [pendingSignatures, setPendingSignatures] = useState<Record<string, PendingSignature>>({});
   const [done, setDone] = useState(false);
   const [isSigning, setIsSigning] = useState(false);
   const [activeDocFile, setActiveDocFile] = useState<File | null>(null);
@@ -170,9 +171,7 @@ function SignPage() {
     let url: string;
     if (sessionEmail) {
       url = `${baseUrl}/binders/${binderId}/documents/${activeDocId}/content`;
-      const stored = typeof window !== "undefined"
-        ? localStorage.getItem("usign.authToken")
-        : null;
+      const stored = typeof window !== "undefined" ? localStorage.getItem("usign.authToken") : null;
       if (stored) headers.Authorization = `Bearer ${stored}`;
     } else if (token) {
       url = `${baseUrl}/public/binders/${binderId}/signers/${signerId}/documents/${activeDocId}/content?token=${encodeURIComponent(token)}`;
@@ -180,7 +179,7 @@ function SignPage() {
       return undefined;
     }
 
-    void fetch(url, { headers })
+    void fetch(url, { headers, credentials: "include" })
       .then(async (response) => {
         if (!response.ok) return null;
         const blob = await response.blob();
@@ -295,7 +294,9 @@ function SignPage() {
             className="mt-5 bg-action text-action-foreground hover:opacity-90"
             onClick={async () => {
               await logout();
-              window.location.assign(`/login?redirect=${encodeURIComponent(redirectPath)}&email=${encodeURIComponent(invitation?.signerEmail ?? "")}`);
+              window.location.assign(
+                `/login?redirect=${encodeURIComponent(redirectPath)}&email=${encodeURIComponent(invitation?.signerEmail ?? "")}`,
+              );
             }}
           >
             {t("auth.loginLink")}
@@ -320,9 +321,7 @@ function SignPage() {
       <PublicShell onToggleLang={toggleLang}>
         <Card>
           <CheckCircle2 className="mx-auto h-12 w-12 text-action" />
-          <h2 className="mt-3 text-xl font-semibold text-foreground">
-            {t("sign.alreadySigned")}
-          </h2>
+          <h2 className="mt-3 text-xl font-semibold text-foreground">{t("sign.alreadySigned")}</h2>
           <Link
             to="/"
             className="mt-4 inline-block text-sm font-medium text-action hover:underline"
@@ -359,11 +358,7 @@ function SignPage() {
           <XCircle className="mx-auto h-14 w-14 text-destructive" />
           <h2 className="mt-3 text-2xl font-semibold text-foreground">{t("decline.success")}</h2>
           <p className="mt-2 text-sm text-muted-foreground">{binder.name}</p>
-          <Button
-            onClick={() => navigate({ to: "/" })}
-            variant="outline"
-            className="mt-5"
-          >
+          <Button onClick={() => navigate({ to: "/" })} variant="outline" className="mt-5">
             {t("sign.backHome")}
           </Button>
         </Card>
@@ -467,9 +462,7 @@ function SignPage() {
                     Page {activePage} / {activeDoc.pages ?? 1}
                   </span>
                   <button
-                    onClick={() =>
-                      setActivePage((p) => Math.min(activeDoc.pages ?? 1, p + 1))
-                    }
+                    onClick={() => setActivePage((p) => Math.min(activeDoc.pages ?? 1, p + 1))}
                     disabled={activePage >= (activeDoc.pages ?? 1)}
                     className="flex items-center gap-1 rounded p-1 disabled:opacity-40 hover:bg-accent"
                   >
@@ -497,7 +490,11 @@ function SignPage() {
                           // Auto-fill the initial (paraphe) zone with the signer's initials.
                           setPendingSignatures((prev) => ({
                             ...prev,
-                            [f.id]: { method: "typed", data: initialsText, at: new Date().toISOString() },
+                            [f.id]: {
+                              method: "typed",
+                              data: initialsText,
+                              at: new Date().toISOString(),
+                            },
                           }));
                         } else if (savedSignature) {
                           // Reuse the user's saved signature instead of asking again.
@@ -575,7 +572,9 @@ function SignPage() {
                                 <div className="border-t border-slate-200/80 px-1 pt-1 text-[8px] leading-tight text-slate-700">
                                   <div className="truncate font-semibold">{fSigner?.name}</div>
                                   {filledAt && (
-                                    <div className="truncate">{formatDateTime(filledAt, i18n.language)}</div>
+                                    <div className="truncate">
+                                      {formatDateTime(filledAt, i18n.language)}
+                                    </div>
                                   )}
                                 </div>
                               </div>
@@ -726,10 +725,7 @@ function SignPage() {
       </div>
 
       {/* Signature pad dialog */}
-      <Dialog
-        open={Boolean(activeField)}
-        onOpenChange={(v) => !v && setActiveFieldId(null)}
-      >
+      <Dialog open={Boolean(activeField)} onOpenChange={(v) => !v && setActiveFieldId(null)}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{t("sign.title")}</DialogTitle>
@@ -782,7 +778,7 @@ function SignPage() {
               {t("decline.cancel")}
             </Button>
             <Button
-                  onClick={() => void submitDecline()}
+              onClick={() => void submitDecline()}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               <XCircle className="mr-2 h-4 w-4" />

@@ -95,7 +95,10 @@ export function getInitialsFromName(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "";
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return parts.slice(0, 3).map((p) => p[0]?.toUpperCase() ?? "").join("");
+  return parts
+    .slice(0, 3)
+    .map((p) => p[0]?.toUpperCase() ?? "")
+    .join("");
 }
 
 /** Generate a deterministic-looking fake IPv4 (mock only). */
@@ -232,7 +235,27 @@ export const initialBinders: Binder[] = [
 ];
 
 export const initialContacts: Contact[] = [
-  { id: "c1", firstName: "Alice", lastName: "Martin", email: "alice.martin@acme.com", phone: "+33 6 12 34 56 78", company: "Acme" },
-  { id: "c2", firstName: "Jean", lastName: "Dupont", email: "j.dupont@lex.com", company: "Lex Partners" },
-  { id: "c3", firstName: "Sara", lastName: "Bernard", email: "s.bernard@globex.io", phone: "+33 7 55 22 11 00", company: "Globex" },
+  {
+    id: "c1",
+    firstName: "Alice",
+    lastName: "Martin",
+    email: "alice.martin@acme.com",
+    phone: "+33 6 12 34 56 78",
+    company: "Acme",
+  },
+  {
+    id: "c2",
+    firstName: "Jean",
+    lastName: "Dupont",
+    email: "j.dupont@lex.com",
+    company: "Lex Partners",
+  },
+  {
+    id: "c3",
+    firstName: "Sara",
+    lastName: "Bernard",
+    email: "s.bernard@globex.io",
+    phone: "+33 7 55 22 11 00",
+    company: "Globex",
+  },
 ];

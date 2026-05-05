@@ -40,9 +40,7 @@ export function SignaturePad({
   const [imageData, setImageData] = useState<string | null>(null);
 
   // OTP
-  const [expectedOtp] = useState(() =>
-    Math.floor(100000 + Math.random() * 900000).toString(),
-  );
+  const [expectedOtp] = useState(() => Math.floor(100000 + Math.random() * 900000).toString());
   const [otpInput, setOtpInput] = useState("");
   const [otpError, setOtpError] = useState(false);
 
@@ -240,9 +238,7 @@ export function SignaturePad({
               inputMode="numeric"
               className="text-center font-mono tracking-widest"
             />
-            {otpError && (
-              <p className="text-xs text-destructive">{t("sign.invalidOtp")}</p>
-            )}
+            {otpError && <p className="text-xs text-destructive">{t("sign.invalidOtp")}</p>}
           </div>
         )}
       </div>

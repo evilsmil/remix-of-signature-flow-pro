@@ -72,7 +72,9 @@ function ResetPasswordPage() {
         <Logo />
         <div className="space-y-4">
           <h2 className="text-4xl font-semibold leading-tight">
-            Créez un nouveau<br />mot de passe.
+            Créez un nouveau
+            <br />
+            mot de passe.
           </h2>
           <p className="max-w-md text-sidebar-foreground/70">
             Choisissez un mot de passe fort pour sécuriser à nouveau votre accès à Usign.
@@ -90,7 +92,9 @@ function ResetPasswordPage() {
         <div className="flex flex-1 items-center justify-center p-6">
           <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-6">
             <div className="space-y-2">
-              <h1 className="text-2xl font-semibold text-foreground">{t("auth.resetPasswordTitle")}</h1>
+              <h1 className="text-2xl font-semibold text-foreground">
+                {t("auth.resetPasswordTitle")}
+              </h1>
               <p className="text-sm text-muted-foreground">
                 {token ? t("auth.resetPasswordSubtitle") : t("auth.invalidResetLink")}
               </p>
@@ -126,7 +130,11 @@ function ResetPasswordPage() {
                   />
                 </div>
 
-                <Button type="submit" disabled={isSubmitting} className="w-full bg-action text-action-foreground hover:opacity-90">
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full bg-action text-action-foreground hover:opacity-90"
+                >
                   {t("auth.resetPasswordSubmit")}
                 </Button>
               </>

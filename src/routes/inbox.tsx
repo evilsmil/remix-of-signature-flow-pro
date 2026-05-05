@@ -149,78 +149,80 @@ function InboxPage() {
         ) : (
           <div className="overflow-hidden rounded-lg border bg-card">
             <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-sm">
-              <thead className="border-b bg-muted/40 text-[11px] uppercase tracking-wider text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-3 text-left font-semibold">{t("inbox.cols.binder")}</th>
-                  <th className="px-4 py-3 text-left font-semibold">{t("inbox.cols.owner")}</th>
-                  <th className="px-4 py-3 text-left font-semibold">{t("inbox.cols.received")}</th>
-                  <th className="px-4 py-3 text-left font-semibold">{t("inbox.cols.zones")}</th>
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((it) => (
-                  <tr key={it.binder.id} className="border-b last:border-0 hover:bg-muted/30">
-                    <td className="px-4 py-3">
-                      <Link
-                        to="/binders/detail/$id"
-                        params={{ id: it.binder.id }}
-                        className="font-medium text-foreground hover:underline"
-                      >
-                        {it.binder.name}
-                      </Link>
-                      {it.binder.description && (
-                        <div className="text-xs text-muted-foreground">
-                          {it.binder.description}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand text-[10px] font-semibold text-brand-foreground">
-                          {it.binder.ownerInitials}
-                        </span>
-                        <div className="leading-tight">
-                          <div className="text-xs font-medium text-foreground">
-                            {it.binder.ownerName}
-                          </div>
-                          <div className="text-[11px] text-muted-foreground">
-                            {it.binder.ownerEmail}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {fmt(it.binder.startedAt ?? it.binder.updatedAt)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-foreground">
-                        {t("inbox.zonesCount", { count: it.zonesCount })}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end gap-2">
-                        {saved && it.zonesCount > 0 && (
-                          <Button
-                            size="sm"
-                            onClick={() => signOne(it)}
-                            className="bg-action text-action-foreground hover:opacity-90"
-                          >
-                            <Zap className="mr-1.5 h-3.5 w-3.5" />
-                            {t("inbox.applyAll")}
-                          </Button>
-                        )}
-                        <Button size="sm" variant="outline" onClick={() => openManual(it)}>
-                          <Pen className="mr-1.5 h-3.5 w-3.5" />
-                          {t("inbox.sign")}
-                        </Button>
-                      </div>
-                    </td>
+              <table className="w-full min-w-[640px] text-sm">
+                <thead className="border-b bg-muted/40 text-[11px] uppercase tracking-wider text-muted-foreground">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-semibold">{t("inbox.cols.binder")}</th>
+                    <th className="px-4 py-3 text-left font-semibold">{t("inbox.cols.owner")}</th>
+                    <th className="px-4 py-3 text-left font-semibold">
+                      {t("inbox.cols.received")}
+                    </th>
+                    <th className="px-4 py-3 text-left font-semibold">{t("inbox.cols.zones")}</th>
+                    <th className="px-4 py-3" />
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {items.map((it) => (
+                    <tr key={it.binder.id} className="border-b last:border-0 hover:bg-muted/30">
+                      <td className="px-4 py-3">
+                        <Link
+                          to="/binders/detail/$id"
+                          params={{ id: it.binder.id }}
+                          className="font-medium text-foreground hover:underline"
+                        >
+                          {it.binder.name}
+                        </Link>
+                        {it.binder.description && (
+                          <div className="text-xs text-muted-foreground">
+                            {it.binder.description}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand text-[10px] font-semibold text-brand-foreground">
+                            {it.binder.ownerInitials}
+                          </span>
+                          <div className="leading-tight">
+                            <div className="text-xs font-medium text-foreground">
+                              {it.binder.ownerName}
+                            </div>
+                            <div className="text-[11px] text-muted-foreground">
+                              {it.binder.ownerEmail}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {fmt(it.binder.startedAt ?? it.binder.updatedAt)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-foreground">
+                          {t("inbox.zonesCount", { count: it.zonesCount })}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex justify-end gap-2">
+                          {saved && it.zonesCount > 0 && (
+                            <Button
+                              size="sm"
+                              onClick={() => signOne(it)}
+                              className="bg-action text-action-foreground hover:opacity-90"
+                            >
+                              <Zap className="mr-1.5 h-3.5 w-3.5" />
+                              {t("inbox.applyAll")}
+                            </Button>
+                          )}
+                          <Button size="sm" variant="outline" onClick={() => openManual(it)}>
+                            <Pen className="mr-1.5 h-3.5 w-3.5" />
+                            {t("inbox.sign")}
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}

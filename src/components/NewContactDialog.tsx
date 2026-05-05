@@ -2,12 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { UserPlus, X } from "lucide-react";
 import { toast } from "sonner";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useContacts } from "@/lib/store";
@@ -95,25 +90,57 @@ export function NewContactDialog({
           <div className="space-y-4 px-8 py-6">
             <ContactField label={t("contacts.cols.name")} required>
               <div className="flex gap-2">
-                <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Prénom" required disabled={isSaving} />
-                <Input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Nom" required disabled={isSaving} />
+                <Input
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="Prénom"
+                  required
+                  disabled={isSaving}
+                />
+                <Input
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Nom"
+                  required
+                  disabled={isSaving}
+                />
               </div>
             </ContactField>
             <ContactField label={t("contacts.cols.email")} required>
-              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required disabled={isSaving} />
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                disabled={isSaving}
+              />
             </ContactField>
             <ContactField label={t("contacts.cols.phone")}>
               <Input value={phone} onChange={(e) => setPhone(e.target.value)} disabled={isSaving} />
             </ContactField>
             <ContactField label={t("contacts.cols.company")}>
-              <Input value={company} onChange={(e) => setCompany(e.target.value)} disabled={isSaving} />
+              <Input
+                value={company}
+                onChange={(e) => setCompany(e.target.value)}
+                disabled={isSaving}
+              />
             </ContactField>
           </div>
           <div className="flex items-center justify-end gap-3 bg-muted/50 px-8 py-4">
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isSaving} className="text-action hover:text-action">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => onOpenChange(false)}
+              disabled={isSaving}
+              className="text-action hover:text-action"
+            >
               {t("common.cancel")}
             </Button>
-            <Button type="submit" disabled={isSaving} className="bg-[oklch(0.7_0.16_240)] text-white hover:bg-[oklch(0.65_0.18_240)]">
+            <Button
+              type="submit"
+              disabled={isSaving}
+              className="bg-[oklch(0.7_0.16_240)] text-white hover:bg-[oklch(0.65_0.18_240)]"
+            >
               {t("common.save")}
             </Button>
           </div>

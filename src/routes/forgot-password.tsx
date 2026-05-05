@@ -61,7 +61,8 @@ function ForgotPasswordPage() {
         <Logo />
         <div className="space-y-4">
           <h2 className="text-4xl font-semibold leading-tight">
-            Récupérez l'accès<br />à votre espace Usign.
+            Récupérez l'accès
+            <br />à votre espace Usign.
           </h2>
           <p className="max-w-md text-sidebar-foreground/70">
             Recevez un code de sécurité par email puis définissez un nouveau mot de passe.
@@ -79,9 +80,13 @@ function ForgotPasswordPage() {
         <div className="flex flex-1 items-center justify-center p-6">
           <form onSubmit={handleRequestSubmit} className="w-full max-w-sm space-y-6">
             <div className="space-y-2">
-              <h1 className="text-2xl font-semibold text-foreground">{t("auth.forgotPasswordTitle")}</h1>
+              <h1 className="text-2xl font-semibold text-foreground">
+                {t("auth.forgotPasswordTitle")}
+              </h1>
               <p className="text-sm text-muted-foreground">
-                {isSuccess ? t("auth.forgotPasswordSentSubtitle", { email }) : t("auth.forgotPasswordSubtitle")}
+                {isSuccess
+                  ? t("auth.forgotPasswordSentSubtitle", { email })
+                  : t("auth.forgotPasswordSubtitle")}
               </p>
             </div>
 
@@ -114,7 +119,11 @@ function ForgotPasswordPage() {
                   />
                 </div>
 
-                <Button type="submit" disabled={isSubmitting} className="w-full bg-action text-action-foreground hover:opacity-90">
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full bg-action text-action-foreground hover:opacity-90"
+                >
                   {t("auth.forgotPasswordSubmit")}
                 </Button>
               </>

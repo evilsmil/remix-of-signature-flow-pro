@@ -52,14 +52,17 @@ const resources = {
         confirmPasswordPlaceholder: "Saisissez à nouveau le mot de passe",
         passwordsMismatch: "Les mots de passe ne correspondent pas.",
         forgotPasswordTitle: "Mot de passe oublié",
-        forgotPasswordSubtitle: "Saisissez votre adresse email pour recevoir un lien de réinitialisation et un code à 6 chiffres.",
+        forgotPasswordSubtitle:
+          "Saisissez votre adresse email pour recevoir un lien de réinitialisation et un code à 6 chiffres.",
         forgotPasswordSubmit: "Envoyer le code",
         forgotPasswordSuccess: "Si un compte existe, un code de réinitialisation a été envoyé.",
         forgotPasswordSentSubtitle: "Un email vient d'être envoyé à {{email}} si ce compte existe.",
-        forgotPasswordSentHelp: "Ouvrez l'email reçu, cliquez sur le lien de réinitialisation puis saisissez le code à 6 chiffres sur l'écran suivant.",
+        forgotPasswordSentHelp:
+          "Ouvrez l'email reçu, cliquez sur le lien de réinitialisation puis saisissez le code à 6 chiffres sur l'écran suivant.",
         forgotPasswordError: "Envoi du code impossible",
         resetCodeTitle: "Vérifier le code",
-        resetCodeSubtitle: "Saisissez le code à 6 chiffres reçu par email pour confirmer la réinitialisation.",
+        resetCodeSubtitle:
+          "Saisissez le code à 6 chiffres reçu par email pour confirmer la réinitialisation.",
         resetCode: "Code à 6 chiffres",
         resetCodeHelp: "Le code expire après 15 minutes.",
         resetCodeSubmit: "Vérifier le code",
@@ -68,7 +71,8 @@ const resources = {
         resetPasswordTitle: "Définir un nouveau mot de passe",
         resetPasswordSubtitle: "Choisissez maintenant votre nouveau mot de passe.",
         resetPasswordSubmit: "Réinitialiser le mot de passe",
-        resetPasswordSuccess: "Votre mot de passe a été réinitialisé. Vous pouvez vous reconnecter.",
+        resetPasswordSuccess:
+          "Votre mot de passe a été réinitialisé. Vous pouvez vous reconnecter.",
         resetPasswordError: "Réinitialisation impossible",
         invalidResetLink: "Ce lien de réinitialisation est invalide ou expiré.",
         requestAnotherReset: "Demander un nouveau lien",
@@ -105,7 +109,8 @@ const resources = {
       },
       documents: {
         title: "Documents",
-        subtitle: "Retrouvez uniquement les documents finaux issus de vos parapheurs et de votre historique de signature.",
+        subtitle:
+          "Retrouvez uniquement les documents finaux issus de vos parapheurs et de votre historique de signature.",
         searchPlaceholder: "Rechercher documents",
         empty: "Aucun document",
         stats: {
@@ -187,7 +192,8 @@ const resources = {
         consolidationLabel: "Consolidation autorisée",
         documentsHelp: "Ces fichiers requièrent une signature électronique.",
         attachmentsHelp: "Documents annexes consultables par les signataires (non signés).",
-        placementHelp: "Sélectionnez un signataire puis cliquez sur la page pour déposer une zone de signature.",
+        placementHelp:
+          "Sélectionnez un signataire puis cliquez sur la page pour déposer une zone de signature.",
         placementNoDocs: "Ajoutez d'abord un document à signer.",
         placementNoSigners: "Ajoutez d'abord un signataire.",
         selectSigner: "Signataire actif",
@@ -238,7 +244,8 @@ const resources = {
         editInviteEmail: "Modifier l'email",
         saveInviteEmail: "Enregistrer l'email",
         savingInviteEmail: "Enregistrement...",
-        inviteEmailUpdated: "L'email du signataire a été mis à jour et l'invitation a été relancée.",
+        inviteEmailUpdated:
+          "L'email du signataire a été mis à jour et l'invitation a été relancée.",
         inviteEmailUpdateError: "Impossible de mettre à jour l'email du signataire.",
         attachmentsTitle: "Pièces jointes",
         documentsTitle: "Documents à signer",
@@ -271,7 +278,8 @@ const resources = {
         save: "Enregistrer",
         savedToast: "Signature enregistrée.",
         deletedToast: "Signature supprimée.",
-        otpDisabled: "Le code OTP n'est pas pris en charge pour la signature enregistrée (il est généré au moment de signer).",
+        otpDisabled:
+          "Le code OTP n'est pas pris en charge pour la signature enregistrée (il est généré au moment de signer).",
       },
       inbox: {
         title: "Attente de signature",
@@ -315,7 +323,8 @@ const resources = {
       decline: {
         button: "Refuser de signer",
         title: "Refuser de signer ce parapheur",
-        intro: "Indiquez le motif de votre refus. Le propriétaire du parapheur en sera informé et le parapheur sera arrêté.",
+        intro:
+          "Indiquez le motif de votre refus. Le propriétaire du parapheur en sera informé et le parapheur sera arrêté.",
         reasonLabel: "Motif du refus",
         reasonPlaceholder: "Ex : informations incorrectes, désaccord sur les termes…",
         confirm: "Confirmer le refus",
@@ -378,9 +387,11 @@ const resources = {
         notFound: "Lien de signature invalide.",
         authRequiredTitle: "Connexion requise",
         authRequiredExisting: "Connectez-vous avec {{email}} pour consulter et signer ce document.",
-        authRequiredNew: "Créez d'abord un compte avec {{email}} pour consulter et signer ce document.",
+        authRequiredNew:
+          "Créez d'abord un compte avec {{email}} pour consulter et signer ce document.",
         wrongAccountTitle: "Mauvais compte connecté",
-        wrongAccountSubtitle: "Vous devez continuer avec l'adresse {{email}} pour signer ce document.",
+        wrongAccountSubtitle:
+          "Vous devez continuer avec l'adresse {{email}} pour signer ce document.",
         alreadySigned: "Vous avez déjà signé ce parapheur.",
         progress: "{{done}} / {{total}} signature(s) apposée(s)",
         zoneOf: "Zone {{n}} — page {{p}} de {{doc}}",
@@ -401,7 +412,8 @@ const resources = {
           },
           contact: {
             title: "Ajoutez votre premier contact",
-            description: "Constituez votre carnet d'adresses pour envoyer rapidement vos parapheurs.",
+            description:
+              "Constituez votre carnet d'adresses pour envoyer rapidement vos parapheurs.",
             cta: "Ajouter un contact",
           },
           binder: {
@@ -411,7 +423,8 @@ const resources = {
           },
           profile: {
             title: "Complétez votre profil",
-            description: "Renseignez votre téléphone et votre photo pour personnaliser votre espace.",
+            description:
+              "Renseignez votre téléphone et votre photo pour personnaliser votre espace.",
             cta: "Ouvrir mes paramètres",
           },
         },
@@ -441,7 +454,8 @@ const resources = {
         },
         security: {
           heading: "Mot de passe",
-          intro: "Modifiez votre mot de passe. Pour des raisons de sécurité, votre mot de passe actuel est requis.",
+          intro:
+            "Modifiez votre mot de passe. Pour des raisons de sécurité, votre mot de passe actuel est requis.",
           current: "Mot de passe actuel",
           new: "Nouveau mot de passe",
           confirm: "Confirmer le nouveau mot de passe",
@@ -514,11 +528,14 @@ const resources = {
         confirmPasswordPlaceholder: "Enter your password again",
         passwordsMismatch: "Passwords do not match.",
         forgotPasswordTitle: "Forgot password",
-        forgotPasswordSubtitle: "Enter your email address to receive a reset link and a 6-digit code.",
+        forgotPasswordSubtitle:
+          "Enter your email address to receive a reset link and a 6-digit code.",
         forgotPasswordSubmit: "Send code",
         forgotPasswordSuccess: "If an account exists, a reset code has been sent.",
-        forgotPasswordSentSubtitle: "An email has just been sent to {{email}} if that account exists.",
-        forgotPasswordSentHelp: "Open the email, click the reset link, then enter the 6-digit code on the next screen.",
+        forgotPasswordSentSubtitle:
+          "An email has just been sent to {{email}} if that account exists.",
+        forgotPasswordSentHelp:
+          "Open the email, click the reset link, then enter the 6-digit code on the next screen.",
         forgotPasswordError: "Could not send the reset code",
         resetCodeTitle: "Verify the code",
         resetCodeSubtitle: "Enter the 6-digit code from the email to confirm the reset request.",
@@ -567,7 +584,8 @@ const resources = {
       },
       documents: {
         title: "Documents",
-        subtitle: "Only final documents from your binders and from your signing history are listed here.",
+        subtitle:
+          "Only final documents from your binders and from your signing history are listed here.",
         searchPlaceholder: "Search documents",
         empty: "No documents",
         stats: {
@@ -661,8 +679,7 @@ const resources = {
         zoneKind: "Zone type",
         kind: { signature: "Signature", initial: "Initials (paraphe)" },
         kindHelpSignature: "Full signature zone, to draw or type.",
-        kindHelpInitial:
-          "Automatic initials zone: the signer's initials are applied in one click.",
+        kindHelpInitial: "Automatic initials zone: the signer's initials are applied in one click.",
       },
       detail: {
         title: "Binder detail",
@@ -719,8 +736,7 @@ const resources = {
       },
       mySignature: {
         title: "My signature",
-        subtitle:
-          "Save your signature once and reuse it automatically next time you sign.",
+        subtitle: "Save your signature once and reuse it automatically next time you sign.",
         empty: "You haven't saved a signature yet.",
         savedOn: "Saved on {{date}}",
         savedMethodDrawn: "Drawn signature",
@@ -777,7 +793,8 @@ const resources = {
       decline: {
         button: "Decline to sign",
         title: "Decline to sign this binder",
-        intro: "Please tell us why you decline. The binder owner will be notified and the binder will be stopped.",
+        intro:
+          "Please tell us why you decline. The binder owner will be notified and the binder will be stopped.",
         reasonLabel: "Reason",
         reasonPlaceholder: "E.g. incorrect information, disagreement on terms…",
         confirm: "Confirm decline",

@@ -33,17 +33,37 @@ export const Route = createRootRoute({
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Lovable App" },
-      { name: "description", content: "Signature Flow Pro is an enterprise electronic signature dashboard for managing and signing documents." },
+      {
+        name: "description",
+        content:
+          "Signature Flow Pro is an enterprise electronic signature dashboard for managing and signing documents.",
+      },
       { name: "author", content: "Lovable" },
       { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Signature Flow Pro is an enterprise electronic signature dashboard for managing and signing documents." },
+      {
+        property: "og:description",
+        content:
+          "Signature Flow Pro is an enterprise electronic signature dashboard for managing and signing documents.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
       { name: "twitter:title", content: "Lovable App" },
-      { name: "twitter:description", content: "Signature Flow Pro is an enterprise electronic signature dashboard for managing and signing documents." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a47a16b9-7d7d-40e9-9fae-1a4d4e4e7535/id-preview-4c544ecb--64238869-a6a4-4c49-9ff0-24ddbe2b9b68.lovable.app-1776682833794.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a47a16b9-7d7d-40e9-9fae-1a4d4e4e7535/id-preview-4c544ecb--64238869-a6a4-4c49-9ff0-24ddbe2b9b68.lovable.app-1776682833794.png" },
+      {
+        name: "twitter:description",
+        content:
+          "Signature Flow Pro is an enterprise electronic signature dashboard for managing and signing documents.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a47a16b9-7d7d-40e9-9fae-1a4d4e4e7535/id-preview-4c544ecb--64238869-a6a4-4c49-9ff0-24ddbe2b9b68.lovable.app-1776682833794.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a47a16b9-7d7d-40e9-9fae-1a4d4e4e7535/id-preview-4c544ecb--64238869-a6a4-4c49-9ff0-24ddbe2b9b68.lovable.app-1776682833794.png",
+      },
     ],
     links: [
       {

@@ -113,13 +113,7 @@ function SettingsPage() {
 
 /* ----------------------------- Profile ----------------------------- */
 
-function ProfileForm({
-  session,
-  onSaved,
-}: {
-  session: Session;
-  onSaved: (s: Session) => void;
-}) {
+function ProfileForm({ session, onSaved }: { session: Session; onSaved: (s: Session) => void }) {
   const { t } = useTranslation();
   const [name, setName] = useState(session.name);
   const [phone, setPhone] = useState(session.phone ?? "");
@@ -175,13 +169,8 @@ function ProfileForm({
   };
 
   return (
-    <form
-      onSubmit={onSubmit}
-      className="space-y-6 rounded-lg border bg-card p-6 shadow-sm"
-    >
-      <h2 className="text-base font-semibold text-foreground">
-        {t("settings.profile.heading")}
-      </h2>
+    <form onSubmit={onSubmit} className="space-y-6 rounded-lg border bg-card p-6 shadow-sm">
+      <h2 className="text-base font-semibold text-foreground">{t("settings.profile.heading")}</h2>
 
       {/* Photo */}
       <div className="flex items-center gap-5">
@@ -203,7 +192,12 @@ function ProfileForm({
             {t("settings.profile.photo")}
           </Label>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => fileRef.current?.click()}
+            >
               <Camera className="mr-1.5 h-4 w-4" />
               {t("settings.profile.uploadPhoto")}
             </Button>
@@ -400,9 +394,7 @@ function NotificationsForm({
         <h2 className="text-base font-semibold text-foreground">
           {t("settings.notifications.heading")}
         </h2>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {t("settings.notifications.intro")}
-        </p>
+        <p className="mt-1 text-xs text-muted-foreground">{t("settings.notifications.intro")}</p>
       </div>
 
       <ul className="divide-y rounded-md border">

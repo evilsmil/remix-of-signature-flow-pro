@@ -1,4 +1,5 @@
 const AUTH_TOKEN_KEY = "usign.authToken";
+const SESSION_CACHE_KEY = "usign.session";
 
 export class ApiError extends Error {
   constructor(
@@ -36,8 +37,10 @@ function readMessage(payload: unknown, fallback: string) {
 }
 
 export function getApiBaseUrl() {
-  return (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/+$/, "")
-    ?? "http://localhost:3000/api";
+  return (
+    (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/+$/, "") ??
+    "http://localhost:3000/api"
+  );
 }
 
 export function getStoredAuthToken() {
@@ -49,7 +52,11 @@ export function getStoredAuthToken() {
 }
 
 export function hasStoredAuthToken() {
-  return Boolean(getStoredAuthToken());
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return Boolean(getStoredAuthToken() || localStorage.getItem(SESSION_CACHE_KEY));
 }
 
 export function setStoredAuthToken(token: string | null) {
@@ -93,6 +100,7 @@ export async function apiFetch<T>(
   path: string,
   options: RequestInit & { skipAuth?: boolean } = {},
 ) {
+  const { skipAuth, ...fetchOptions } = options;
   const headers = new Headers(options.headers);
   const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
 
@@ -100,7 +108,7 @@ export async function apiFetch<T>(
     headers.set("Content-Type", "application/json");
   }
 
-  if (!options.skipAuth) {
+  if (!skipAuth) {
     const token = getStoredAuthToken();
     if (token) {
       headers.set("Authorization", `Bearer ${token}`);
@@ -108,8 +116,9 @@ export async function apiFetch<T>(
   }
 
   const response = await fetch(joinUrl(getApiBaseUrl(), path), {
-    ...options,
+    ...fetchOptions,
     headers,
+    credentials: fetchOptions.credentials ?? "include",
   });
 
   const contentType = response.headers.get("content-type") ?? "";

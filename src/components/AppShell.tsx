@@ -1,5 +1,16 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { Home, FileText, FilePlus2, Users, LogOut, Settings, Menu, Globe, Inbox, PenLine } from "lucide-react";
+import {
+  Home,
+  FileText,
+  FilePlus2,
+  Users,
+  LogOut,
+  Settings,
+  Menu,
+  Globe,
+  Inbox,
+  PenLine,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
 import { Logo } from "./Logo";
@@ -143,7 +154,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <NavItem to="/inbox" icon={Inbox} label={t("nav.inbox")} active={isInbox} />
           <NavItem to="/documents" icon={FileText} label={t("nav.documents")} active={isDocs} />
           <NavItem to="/contacts" icon={Users} label={t("nav.contacts")} active={isContacts} />
-          <NavItem to="/my-signature" icon={PenLine} label={t("nav.mySignature")} active={isMySig} />
+          <NavItem
+            to="/my-signature"
+            icon={PenLine}
+            label={t("nav.mySignature")}
+            active={isMySig}
+          />
         </nav>
         <div className="px-4 py-3 text-[10px] uppercase tracking-widest text-sidebar-foreground/40">
           © Usign
@@ -153,7 +169,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-16 items-center justify-between gap-2 border-b bg-card px-3 sm:px-4">
           <div className="flex min-w-0 items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => setOpen((v) => !v)} aria-label="Toggle sidebar">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setOpen((v) => !v)}
+              aria-label="Toggle sidebar"
+            >
               <Menu className="h-5 w-5" />
             </Button>
             <h1 className="truncate text-base font-semibold text-foreground sm:text-lg">
@@ -165,14 +186,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     : isInbox
                       ? t("inbox.title")
                       : isDocs
-                          ? t("documents.title")
-                          : isContacts
-                            ? t("contacts.title")
-                            : isMySig
-                              ? t("mySignature.title")
-                              : path.startsWith("/settings")
-                                ? t("settings.title")
-                                : ""
+                        ? t("documents.title")
+                        : isContacts
+                          ? t("contacts.title")
+                          : isMySig
+                            ? t("mySignature.title")
+                            : path.startsWith("/settings")
+                              ? t("settings.title")
+                              : ""
                 : ""}
             </h1>
           </div>

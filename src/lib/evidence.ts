@@ -124,16 +124,16 @@ async function loadPdfjs() {
 
 async function fetchSourceDocumentBytes(binderId: string, documentId: string) {
   const authToken = getStoredAuthToken();
-  if (!authToken) {
-    throw new Error("Session expirée. Reconnectez-vous pour télécharger le document signé.");
+  const headers = new Headers();
+  if (authToken) {
+    headers.set("Authorization", `Bearer ${authToken}`);
   }
 
   const response = await fetch(
     `${getApiBaseUrl()}/binders/${binderId}/documents/${documentId}/content`,
     {
-      headers: {
-        Authorization: `Bearer ${authToken}`,
-      },
+      headers,
+      credentials: "include",
     },
   );
 
@@ -235,11 +235,7 @@ type BuildSignedPdfOptions = {
   documentIds?: string[];
 };
 
-async function buildSignedPdf(
-  binder: Binder,
-  lang: string,
-  options: BuildSignedPdfOptions = {},
-) {
+async function buildSignedPdf(binder: Binder, lang: string, options: BuildSignedPdfOptions = {}) {
   const selectedIds = options.documentIds?.length ? new Set(options.documentIds) : null;
   const documents = (binder.documents ?? []).filter(
     (document) => !selectedIds || selectedIds.has(document.id),
@@ -271,7 +267,8 @@ async function buildSignedPdf(
           throw new Error("Impossible de préparer le rendu du PDF signé.");
         }
 
-        await sourcePage.render({ canvas, canvasContext: context, viewport: renderViewport }).promise;
+        await sourcePage.render({ canvas, canvasContext: context, viewport: renderViewport })
+          .promise;
 
         const pageFormat: [number, number] = [exportViewport.width, exportViewport.height];
         const orientation = exportViewport.width > exportViewport.height ? "landscape" : "portrait";
@@ -307,14 +304,7 @@ async function buildSignedPdf(
 
         for (const field of pageFields) {
           const signer = binder.signers?.find((entry) => entry.id === field.signerId);
-          drawSignedField(
-            output,
-            field,
-            signer,
-            exportViewport.width,
-            exportViewport.height,
-            lang,
-          );
+          drawSignedField(output, field, signer, exportViewport.width, exportViewport.height, lang);
         }
       }
     } finally {
@@ -413,9 +403,7 @@ export function generateCertificatePdf(binder: Binder, lang: string = "fr"): voi
     doc.setFont("helvetica", "normal");
     doc.text(formatDateTime(ev.at, lang), 200, y, { align: "right" });
     y += 5;
-    const who = [ev.actorName, ev.actorEmail ? `<${ev.actorEmail}>` : ""]
-      .filter(Boolean)
-      .join(" ");
+    const who = [ev.actorName, ev.actorEmail ? `<${ev.actorEmail}>` : ""].filter(Boolean).join(" ");
     if (who) {
       doc.setTextColor(100, 116, 139);
       doc.text(`Acteur : ${who}`, 18, y);

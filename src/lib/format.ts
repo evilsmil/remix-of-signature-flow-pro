@@ -13,7 +13,5 @@ export function formatDateTime(iso?: string, lang: string = "fr"): string {
   const yy = String(d.getUTCFullYear()).slice(-2);
   const hh = pad(d.getUTCHours());
   const mi = pad(d.getUTCMinutes());
-  return lang === "fr"
-    ? `${dd}/${mm}/${yy} ${hh}:${mi}`
-    : `${mm}/${dd}/${yy} ${hh}:${mi}`;
+  return lang === "fr" ? `${dd}/${mm}/${yy} ${hh}:${mi}` : `${mm}/${dd}/${yy} ${hh}:${mi}`;
 }

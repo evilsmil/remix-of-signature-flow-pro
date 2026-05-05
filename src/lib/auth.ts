@@ -1,9 +1,4 @@
-import {
-  apiFetch,
-  getStoredAuthToken,
-  isApiError,
-  setStoredAuthToken,
-} from "./api";
+import { apiFetch, isApiError, setStoredAuthToken } from "./api";
 
 const SESSION_KEY = "usign.session";
 const BINDERS_CACHE_KEY = "usign.binders.cache";
@@ -33,7 +28,6 @@ export const DEFAULT_NOTIFS: NotificationPrefs = {
 };
 
 type SessionResponse = {
-  token: string;
   session: Session;
 };
 
@@ -87,10 +81,7 @@ function clearCachedCollections() {
   localStorage.removeItem(CONTACTS_CACHE_KEY);
 }
 
-function persistSession(session: Session, token?: string) {
-  if (token) {
-    setStoredAuthToken(token);
-  }
+function persistSession(session: Session) {
   writeStoredSession(session);
   dispatchAuthChange();
   return session;
@@ -110,11 +101,6 @@ export function getSession(): Session | null {
 }
 
 export async function refreshSession() {
-  if (!getStoredAuthToken()) {
-    clearAuthState();
-    return null;
-  }
-
   try {
     const session = await apiFetch<Session>("/auth/session");
     return persistSession(session);
@@ -135,7 +121,7 @@ export async function login(email: string, password: string) {
     body: JSON.stringify({ email: email.trim(), password }),
   });
 
-  return persistSession(response.session, response.token);
+  return persistSession(response.session);
 }
 
 export async function signup(
@@ -155,7 +141,7 @@ export async function signup(
     }),
   });
 
-  return persistSession(response.session, response.token);
+  return persistSession(response.session);
 }
 
 export async function forgotPassword(email: string) {
@@ -174,11 +160,7 @@ export async function verifyResetCode(token: string, code: string) {
   });
 }
 
-export async function resetPassword(
-  token: string,
-  password: string,
-  confirmPassword: string,
-) {
+export async function resetPassword(token: string, password: string, confirmPassword: string) {
   return apiFetch<BasicOkResponse>("/auth/reset-password", {
     method: "POST",
     skipAuth: true,
@@ -226,11 +208,13 @@ export async function updateSession(patch: Partial<Session>) {
 
 export async function logout() {
   try {
-    if (getStoredAuthToken()) {
-      await apiFetch<{ ok: boolean }>("/auth/logout", {
-        method: "POST",
-        body: JSON.stringify({}),
-      });
+    await apiFetch<{ ok: boolean }>("/auth/logout", {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+  } catch (error) {
+    if (!(isApiError(error) && error.status === 401)) {
+      throw error;
     }
   } finally {
     clearAuthState();

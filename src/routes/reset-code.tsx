@@ -67,7 +67,9 @@ function ResetCodePage() {
         <Logo />
         <div className="space-y-4">
           <h2 className="text-4xl font-semibold leading-tight">
-            Vérifiez votre code<br />de sécurité.
+            Vérifiez votre code
+            <br />
+            de sécurité.
           </h2>
           <p className="max-w-md text-sidebar-foreground/70">
             Saisissez le code à 6 chiffres reçu par email pour accéder à l'étape suivante.
@@ -115,7 +117,11 @@ function ResetCodePage() {
                   <p className="text-xs text-muted-foreground">{t("auth.resetCodeHelp")}</p>
                 </div>
 
-                <Button type="submit" disabled={isSubmitting || code.length !== 6} className="w-full bg-action text-action-foreground hover:opacity-90">
+                <Button
+                  type="submit"
+                  disabled={isSubmitting || code.length !== 6}
+                  className="w-full bg-action text-action-foreground hover:opacity-90"
+                >
                   {t("auth.resetCodeSubmit")}
                 </Button>
               </>

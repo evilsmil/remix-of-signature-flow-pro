@@ -12,12 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -293,9 +288,7 @@ export function NewBinderDialog({
   const updateField = (id: string, patch: Partial<SignatureField>) =>
     setFields((p) => p.map((f) => (f.id === id ? { ...f, ...patch } : f)));
 
-  const fieldsOnPage = fields.filter(
-    (f) => f.documentId === activeDocId && f.page === activePage,
-  );
+  const fieldsOnPage = fields.filter((f) => f.documentId === activeDocId && f.page === activePage);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -446,9 +439,7 @@ export function NewBinderDialog({
                       icon={Paperclip}
                       name={a.name}
                       size={a.size}
-                      onRemove={() =>
-                        setAttachments((p) => p.filter((x) => x.id !== a.id))
-                      }
+                      onRemove={() => setAttachments((p) => p.filter((x) => x.id !== a.id))}
                     />
                   ))}
                 </ul>
@@ -481,9 +472,7 @@ export function NewBinderDialog({
                       value={s.name}
                       onChange={(e) =>
                         setSigners((prev) =>
-                          prev.map((x) =>
-                            x.id === s.id ? { ...x, name: e.target.value } : x,
-                          ),
+                          prev.map((x) => (x.id === s.id ? { ...x, name: e.target.value } : x)),
                         )
                       }
                     />
@@ -493,9 +482,7 @@ export function NewBinderDialog({
                       value={s.email}
                       onChange={(e) =>
                         setSigners((prev) =>
-                          prev.map((x) =>
-                            x.id === s.id ? { ...x, email: e.target.value } : x,
-                          ),
+                          prev.map((x) => (x.id === s.id ? { ...x, email: e.target.value } : x)),
                         )
                       }
                     />
@@ -530,9 +517,7 @@ export function NewBinderDialog({
                 </p>
               ) : (
                 <>
-                  <p className="text-sm text-muted-foreground">
-                    {t("newBinder.placementHelp")}
-                  </p>
+                  <p className="text-sm text-muted-foreground">{t("newBinder.placementHelp")}</p>
 
                   {/* Signer chips */}
                   <div className="space-y-1.5">
@@ -636,9 +621,7 @@ export function NewBinderDialog({
                         {t("newBinder.page")} {activePage} / {activeDoc.pages ?? 1}
                       </span>
                       <button
-                        onClick={() =>
-                          setActivePage((p) => Math.min(activeDoc.pages ?? 1, p + 1))
-                        }
+                        onClick={() => setActivePage((p) => Math.min(activeDoc.pages ?? 1, p + 1))}
                         disabled={activePage >= (activeDoc.pages ?? 1)}
                         className="flex items-center gap-1 rounded p-1 disabled:opacity-40 hover:bg-accent"
                       >
@@ -669,8 +652,7 @@ export function NewBinderDialog({
                           const signer = signers.find((s) => s.id === f.signerId);
                           const color = signer?.color ?? "#0EA5E9";
                           const isInitial = f.kind === "initial";
-                          const baseLabel =
-                            signer?.name?.split(" ")[0] || `#${signer?.order}`;
+                          const baseLabel = signer?.name?.split(" ")[0] || `#${signer?.order}`;
                           const label = isInitial
                             ? `${t("newBinder.kind.initial")} · ${baseLabel}`
                             : baseLabel;
@@ -789,11 +771,21 @@ export function NewBinderDialog({
 
         {/* Footer */}
         <div className="flex items-center justify-between gap-3 border-t bg-muted/40 px-6 py-4">
-          <Button type="button" variant="ghost" onClick={() => handleClose(false)} disabled={isSubmitting}>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => handleClose(false)}
+            disabled={isSubmitting}
+          >
             {t("common.cancel")}
           </Button>
           <div className="flex items-center gap-2">
-            <Button type="button" variant="outline" onClick={goBack} disabled={stepIndex === 0 || isSubmitting}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={goBack}
+              disabled={stepIndex === 0 || isSubmitting}
+            >
               {t("newBinder.back")}
             </Button>
             <Button
@@ -896,9 +888,7 @@ function FileRow({
         <Icon className="h-4 w-4 text-action" />
         <span className="text-foreground">{name}</span>
         {size && (
-          <span className="text-xs text-muted-foreground">
-            {(size / 1024).toFixed(1)} KB
-          </span>
+          <span className="text-xs text-muted-foreground">{(size / 1024).toFixed(1)} KB</span>
         )}
       </div>
       <button
@@ -1027,4 +1017,3 @@ function ResizableField({
     </div>
   );
 }
-

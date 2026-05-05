@@ -221,10 +221,17 @@ function MySignaturePage() {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  <Button onClick={startEdit} className="bg-action text-action-foreground hover:opacity-90">
+                  <Button
+                    onClick={startEdit}
+                    className="bg-action text-action-foreground hover:opacity-90"
+                  >
                     <Pen className="mr-2 h-4 w-4" /> {t("mySignature.edit")}
                   </Button>
-                  <Button variant="outline" onClick={() => void handleDelete()} disabled={isSubmitting}>
+                  <Button
+                    variant="outline"
+                    onClick={() => void handleDelete()}
+                    disabled={isSubmitting}
+                  >
                     <Trash2 className="mr-2 h-4 w-4" /> {t("mySignature.delete")}
                   </Button>
                 </div>
@@ -232,7 +239,10 @@ function MySignaturePage() {
             ) : (
               <div className="space-y-4 text-center">
                 <p className="text-sm text-muted-foreground">{t("mySignature.empty")}</p>
-                <Button onClick={startEdit} className="bg-action text-action-foreground hover:opacity-90">
+                <Button
+                  onClick={startEdit}
+                  className="bg-action text-action-foreground hover:opacity-90"
+                >
                   <Pen className="mr-2 h-4 w-4" /> {t("mySignature.create")}
                 </Button>
               </div>
@@ -319,7 +329,11 @@ function MySignaturePage() {
                   </label>
                   {imageData && (
                     <div className="rounded border bg-white p-3">
-                      <img src={imageData} alt="Signature" className="mx-auto h-24 object-contain" />
+                      <img
+                        src={imageData}
+                        alt="Signature"
+                        className="mx-auto h-24 object-contain"
+                      />
                     </div>
                   )}
                 </div>

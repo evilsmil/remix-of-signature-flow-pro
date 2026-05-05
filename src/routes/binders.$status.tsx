@@ -108,80 +108,86 @@ function BindersByStatus() {
         <div className="overflow-hidden rounded-lg border bg-card">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-sm">
-            <thead className="border-b bg-muted/40 text-[11px] uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3 text-left font-semibold">{t("binders.cols.name")}</th>
-                <th className="px-4 py-3 text-left font-semibold">{t("binders.cols.owner")}</th>
-                <th className="px-4 py-3 text-left font-semibold">{t("binders.cols.updated")}</th>
-                <th className="px-4 py-3 text-left font-semibold">{t("binders.cols.status")}</th>
-                <th className="px-4 py-3 text-left font-semibold">{t("binders.cols.archive")}</th>
-                <th className="px-4 py-3 text-left font-semibold">{t("binders.cols.progress")}</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 && (
+              <thead className="border-b bg-muted/40 text-[11px] uppercase tracking-wider text-muted-foreground">
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
-                    {t("binders.empty")}
-                  </td>
+                  <th className="px-4 py-3 text-left font-semibold">{t("binders.cols.name")}</th>
+                  <th className="px-4 py-3 text-left font-semibold">{t("binders.cols.owner")}</th>
+                  <th className="px-4 py-3 text-left font-semibold">{t("binders.cols.updated")}</th>
+                  <th className="px-4 py-3 text-left font-semibold">{t("binders.cols.status")}</th>
+                  <th className="px-4 py-3 text-left font-semibold">{t("binders.cols.archive")}</th>
+                  <th className="px-4 py-3 text-left font-semibold">
+                    {t("binders.cols.progress")}
+                  </th>
+                  <th className="px-4 py-3" />
                 </tr>
-              )}
-              {filtered.map((b) => (
-                <tr key={b.id} className="border-b last:border-0 hover:bg-muted/30">
-                  <td className="px-4 py-3">
-                    <Link
-                      to="/binders/detail/$id"
-                      params={{ id: b.id }}
-                      className="font-medium text-foreground hover:underline"
-                    >
-                      {b.name}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand text-[10px] font-semibold text-brand-foreground">
-                        {b.ownerInitials}
-                      </span>
-                      <div className="leading-tight">
-                        <div className="text-xs font-medium text-foreground">{b.ownerName}</div>
-                        <div className="text-[11px] text-muted-foreground">{b.ownerEmail}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">{fmt(b.updatedAt)}</td>
-                  <td className="px-4 py-3"><StatusBadge status={b.status} /></td>
-                  <td className="px-4 py-3 text-muted-foreground">{b.externalArchive ?? "—"}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="h-1.5 w-24 overflow-hidden rounded-full bg-muted">
-                        <div className="h-full bg-action" style={{ width: `${b.progress}%` }} />
-                      </div>
-                      <span className="text-xs text-muted-foreground">{b.progress}%</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-end gap-1">
-                      <button
-                        onClick={() => navigate({ to: "/binders/detail/$id", params: { id: b.id } })}
-                        className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-                        aria-label="Open"
+              </thead>
+              <tbody>
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
+                      {t("binders.empty")}
+                    </td>
+                  </tr>
+                )}
+                {filtered.map((b) => (
+                  <tr key={b.id} className="border-b last:border-0 hover:bg-muted/30">
+                    <td className="px-4 py-3">
+                      <Link
+                        to="/binders/detail/$id"
+                        params={{ id: b.id }}
+                        className="font-medium text-foreground hover:underline"
                       >
-                        <ExternalLink className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => remove(b.id)}
-                        className="rounded p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                        aria-label="Delete"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                        {b.name}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand text-[10px] font-semibold text-brand-foreground">
+                          {b.ownerInitials}
+                        </span>
+                        <div className="leading-tight">
+                          <div className="text-xs font-medium text-foreground">{b.ownerName}</div>
+                          <div className="text-[11px] text-muted-foreground">{b.ownerEmail}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">{fmt(b.updatedAt)}</td>
+                    <td className="px-4 py-3">
+                      <StatusBadge status={b.status} />
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">{b.externalArchive ?? "—"}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="h-1.5 w-24 overflow-hidden rounded-full bg-muted">
+                          <div className="h-full bg-action" style={{ width: `${b.progress}%` }} />
+                        </div>
+                        <span className="text-xs text-muted-foreground">{b.progress}%</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex justify-end gap-1">
+                        <button
+                          onClick={() =>
+                            navigate({ to: "/binders/detail/$id", params: { id: b.id } })
+                          }
+                          className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+                          aria-label="Open"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => remove(b.id)}
+                          className="rounded p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                          aria-label="Delete"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
