@@ -802,7 +802,7 @@ function PublicShell({
   return (
     <div className="min-h-screen bg-muted/30">
       <header className="flex h-16 items-center justify-between border-b bg-card px-6">
-        <Logo />
+        <Logo size="sm" className="max-w-[240px]" />
         <button
           type="button"
           onClick={onToggleLang}

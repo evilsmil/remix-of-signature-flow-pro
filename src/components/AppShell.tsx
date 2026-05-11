@@ -146,7 +146,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )}
       >
         <div className="flex h-16 items-center px-4">
-          <Logo />
+          <Logo size="sm" className="w-full" />
         </div>
         <nav className="flex-1 space-y-1 px-3 py-2">
           <NavItem to="/" icon={Home} label={t("nav.home")} active={isHome} />

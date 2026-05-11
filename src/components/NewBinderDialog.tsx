@@ -131,12 +131,12 @@ export function NewBinderDialog({
   const hasDraftContent = useMemo(() => {
     return Boolean(
       name.trim() ||
-        description.trim() ||
-        group.trim() ||
-        documents.length ||
-        attachments.length ||
-        signers.some((signer) => signer.name.trim() || signer.email.trim()) ||
-        fields.length,
+      description.trim() ||
+      group.trim() ||
+      documents.length ||
+      attachments.length ||
+      signers.some((signer) => signer.name.trim() || signer.email.trim()) ||
+      fields.length,
     );
   }, [name, description, group, documents.length, attachments.length, signers, fields.length]);
 
@@ -251,7 +251,6 @@ export function NewBinderDialog({
       throw new Error(t("newBinder.signerEmailDomainError"));
     }
 
-    const session = getSession();
     const documentPayloads = await Promise.all(
       documents.map(async ({ id, name: documentName, size, pages, file, content }) => ({
         id,
@@ -270,16 +269,13 @@ export function NewBinderDialog({
         status: "pending" as const,
       }))
       .filter((signer) =>
-        saveAsDraft
-          ? Boolean(signer.name.trim()) && Boolean(signer.email.trim())
-          : true,
+        saveAsDraft ? Boolean(signer.name.trim()) && Boolean(signer.email.trim()) : true,
       );
 
     const allowedSignerIds = new Set(normalizedSigners.map((signer) => signer.id));
     const allowedDocumentIds = new Set(documentPayloads.map((document) => document.id));
     const normalizedFields = fields.filter(
-      (field) =>
-        allowedSignerIds.has(field.signerId) && allowedDocumentIds.has(field.documentId),
+      (field) => allowedSignerIds.has(field.signerId) && allowedDocumentIds.has(field.documentId),
     );
 
     return {
@@ -287,9 +283,6 @@ export function NewBinderDialog({
       description: description.trim() || undefined,
       group,
       status: saveAsDraft ? ("draft" as const) : undefined,
-      ownerName: session?.name ?? "User",
-      ownerEmail: session?.email ?? "user@example.com",
-      ownerInitials: session?.initials ?? "US",
       documents: documentPayloads,
       attachments,
       signers: normalizedSigners,
@@ -350,9 +343,7 @@ export function NewBinderDialog({
     if (step === "signers")
       return (
         signers.length > 0 &&
-        signers.every(
-          (s) => s.name.trim() && s.email.trim() && isAllowedSignerEmail(s.email),
-        )
+        signers.every((s) => s.name.trim() && s.email.trim() && isAllowedSignerEmail(s.email))
       );
     if (step === "placement") return true; // optional
     return true;
@@ -397,9 +388,7 @@ export function NewBinderDialog({
       toast.error(
         getErrorMessage(
           error,
-          draftBinder
-            ? "Demarrage du brouillon impossible"
-            : "Création du parapheur impossible",
+          draftBinder ? "Demarrage du brouillon impossible" : "Création du parapheur impossible",
         ),
       );
     } finally {
