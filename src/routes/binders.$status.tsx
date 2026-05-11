@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Search, Plus, Trash2, ExternalLink, ListFilter, ArrowDownUp } from "lucide-react";
+import { z } from "zod";
 import { AppShell } from "@/components/AppShell";
 import { StatusBadge } from "@/components/StatusBadge";
 import { NewBinderDialog } from "@/components/NewBinderDialog";
@@ -9,21 +10,26 @@ import { useBinders } from "@/lib/store";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { formatDateTime } from "@/lib/format";
-import type { BinderStatus } from "@/lib/mockData";
+import type { Binder, BinderStatus } from "@/lib/mockData";
 
 type StatusFilter = BinderStatus | "all";
 const TABS: StatusFilter[] = ["all", "draft", "started", "finished", "stopped", "archived"];
+const searchSchema = z.object({
+  draftId: z.string().optional(),
+});
 
 export const Route = createFileRoute("/binders/$status")({
   parseParams: (params) => ({
     status: (TABS.includes(params.status as StatusFilter) ? params.status : "all") as StatusFilter,
   }),
+  validateSearch: searchSchema,
   head: () => ({ meta: [{ title: "Parapheurs — Usign" }] }),
   component: BindersByStatus,
 });
 
 function BindersByStatus() {
   const { status } = Route.useParams();
+  const { draftId } = Route.useSearch();
   const { t, i18n } = useTranslation();
   const { binders, remove } = useBinders();
   const navigate = useNavigate();
@@ -37,8 +43,40 @@ function BindersByStatus() {
         .filter((b) => b.name.toLowerCase().includes(query.toLowerCase())),
     [binders, status, query],
   );
+  const editingDraft = useMemo(
+    () => binders.find((binder) => binder.id === draftId && binder.status === "draft") ?? null,
+    [binders, draftId],
+  );
 
   const fmt = (iso: string) => formatDateTime(iso, i18n.language);
+
+  const openBinder = (binder: Binder) => {
+    if (binder.status === "draft") {
+      navigate({
+        to: "/binders/$status",
+        params: { status },
+        search: { draftId: binder.id },
+      });
+      return;
+    }
+
+    navigate({ to: "/binders/detail/$id", params: { id: binder.id } });
+  };
+
+  const handleDialogOpenChange = (nextOpen: boolean) => {
+    if (draftId) {
+      if (!nextOpen) {
+        navigate({
+          to: "/binders/$status",
+          params: { status },
+          search: {},
+        });
+      }
+      return;
+    }
+
+    setOpen(nextOpen);
+  };
 
   return (
     <AppShell>
@@ -132,13 +170,23 @@ function BindersByStatus() {
                 {filtered.map((b) => (
                   <tr key={b.id} className="border-b last:border-0 hover:bg-muted/30">
                     <td className="px-4 py-3">
-                      <Link
-                        to="/binders/detail/$id"
-                        params={{ id: b.id }}
-                        className="font-medium text-foreground hover:underline"
-                      >
-                        {b.name}
-                      </Link>
+                      {b.status === "draft" ? (
+                        <button
+                          type="button"
+                          onClick={() => openBinder(b)}
+                          className="font-medium text-foreground hover:underline"
+                        >
+                          {b.name}
+                        </button>
+                      ) : (
+                        <Link
+                          to="/binders/detail/$id"
+                          params={{ id: b.id }}
+                          className="font-medium text-foreground hover:underline"
+                        >
+                          {b.name}
+                        </Link>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -167,9 +215,7 @@ function BindersByStatus() {
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-1">
                         <button
-                          onClick={() =>
-                            navigate({ to: "/binders/detail/$id", params: { id: b.id } })
-                          }
+                          onClick={() => openBinder(b)}
                           className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
                           aria-label="Open"
                         >
@@ -192,8 +238,9 @@ function BindersByStatus() {
         </div>
       </div>
       <NewBinderDialog
-        open={open}
-        onOpenChange={setOpen}
+        open={draftId ? Boolean(editingDraft) : open}
+        onOpenChange={handleDialogOpenChange}
+        draftBinder={editingDraft}
         onCreated={(id) => navigate({ to: "/binders/detail/$id", params: { id } })}
       />
     </AppShell>

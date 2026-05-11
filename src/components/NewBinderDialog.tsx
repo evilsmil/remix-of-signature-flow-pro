@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
@@ -17,13 +17,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { getErrorMessage } from "@/lib/api";
+import { getApiBaseUrl, getErrorMessage, getStoredAuthToken } from "@/lib/api";
 import { isAllowedSignerEmail } from "@/lib/email";
 import { useBinders } from "@/lib/store";
 import { getSession } from "@/lib/auth";
 import {
   type BinderDocument,
   type BinderAttachment,
+  type Binder,
   type BinderSigner,
   type BinderNotifications,
   type SignatureField,
@@ -79,13 +80,16 @@ export function NewBinderDialog({
   open,
   onOpenChange,
   onCreated,
+  draftBinder,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onCreated?: (id: string) => void;
+  draftBinder?: Binder | null;
 }) {
   const { t } = useTranslation();
-  const { create } = useBinders();
+  const { create, update, startBinder } = useBinders();
+  const isEditingDraft = Boolean(draftBinder);
 
   const [step, setStep] = useState<StepKey>("general");
   const [name, setName] = useState("");
@@ -150,7 +154,97 @@ export function NewBinderDialog({
     setActiveSignerId(null);
     setActiveDocId(null);
     setActivePage(1);
+    setActiveKind("signature");
   };
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    if (!draftBinder) {
+      reset();
+      return;
+    }
+
+    setStep("general");
+    setName(draftBinder.name);
+    setDescription(draftBinder.description ?? "");
+    setGroup(draftBinder.group ?? "");
+    setConsolidation(draftBinder.consolidation);
+    setDocuments((draftBinder.documents ?? []).map((document) => ({ ...document })));
+    setAttachments(draftBinder.attachments ?? []);
+    setSigners(draftBinder.signers ?? []);
+    setFields(draftBinder.signatureFields ?? []);
+    setNotif({
+      onStart: draftBinder.notifications?.onStart ?? true,
+      onComplete: draftBinder.notifications?.onComplete ?? true,
+      reminders: draftBinder.notifications?.reminders ?? false,
+      reminderEveryHours: draftBinder.notifications?.reminderEveryHours ?? 24,
+    });
+    setActiveSignerId(draftBinder.signers?.[0]?.id ?? null);
+    setActiveDocId(draftBinder.documents?.[0]?.id ?? null);
+    setActivePage(1);
+    setActiveKind("signature");
+  }, [draftBinder, open]);
+
+  useEffect(() => {
+    if (!draftBinder || !open || !activeDocId) {
+      return;
+    }
+
+    const activeDocument = documents.find((document) => document.id === activeDocId);
+    if (!activeDocument || activeDocument.file) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadDocumentFile = async () => {
+      try {
+        const headers = new Headers();
+        const token = getStoredAuthToken();
+        if (token) {
+          headers.set("Authorization", `Bearer ${token}`);
+        }
+
+        const response = await fetch(
+          `${getApiBaseUrl()}/binders/${draftBinder.id}/documents/${activeDocId}/content`,
+          {
+            headers,
+            credentials: "include",
+          },
+        );
+
+        if (!response.ok) {
+          return;
+        }
+
+        const blob = await response.blob();
+        if (cancelled) {
+          return;
+        }
+
+        const file = new File([blob], activeDocument.name, {
+          type: blob.type || "application/pdf",
+        });
+
+        setDocuments((current) =>
+          current.map((document) =>
+            document.id === activeDocId ? { ...document, file } : document,
+          ),
+        );
+      } catch {
+        // Keep the placeholder preview if the stored PDF cannot be fetched.
+      }
+    };
+
+    void loadDocumentFile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [draftBinder, open, activeDocId, documents]);
 
   const buildPayload = async (saveAsDraft: boolean) => {
     if (invalidSignerIds.size > 0) {
@@ -159,12 +253,12 @@ export function NewBinderDialog({
 
     const session = getSession();
     const documentPayloads = await Promise.all(
-      documents.map(async ({ id, name: documentName, size, pages, file }) => ({
+      documents.map(async ({ id, name: documentName, size, pages, file, content }) => ({
         id,
         name: documentName,
         size,
         pages,
-        content: file ? await fileToBase64(file) : undefined,
+        content: file ? await fileToBase64(file) : content,
       })),
     );
 
@@ -212,11 +306,22 @@ export function NewBinderDialog({
 
     setIsSavingDraft(true);
     try {
-      await create(await buildPayload(true));
+      if (draftBinder) {
+        await update(draftBinder.id, await buildPayload(true));
+      } else {
+        await create(await buildPayload(true));
+      }
       toast.success("Brouillon enregistre");
       return "saved" as const;
     } catch (error) {
-      toast.error(getErrorMessage(error, "Enregistrement du brouillon impossible"));
+      toast.error(
+        getErrorMessage(
+          error,
+          draftBinder
+            ? "Mise a jour du brouillon impossible"
+            : "Enregistrement du brouillon impossible",
+        ),
+      );
       return "failed" as const;
     } finally {
       setIsSavingDraft(false);
@@ -275,11 +380,28 @@ export function NewBinderDialog({
   const submit = async () => {
     setIsSubmitting(true);
     try {
-      const binder = await create(await buildPayload(false));
+      let binderId: string;
+
+      if (draftBinder) {
+        const savedBinder = await update(draftBinder.id, await buildPayload(true));
+        const startedBinder = await startBinder(savedBinder.id);
+        binderId = startedBinder.id;
+      } else {
+        const binder = await create(await buildPayload(false));
+        binderId = binder.id;
+      }
+
       await handleClose(false, { saveDraft: false });
-      onCreated?.(binder.id);
+      onCreated?.(binderId);
     } catch (error) {
-      toast.error(getErrorMessage(error, "Création du parapheur impossible"));
+      toast.error(
+        getErrorMessage(
+          error,
+          draftBinder
+            ? "Demarrage du brouillon impossible"
+            : "Création du parapheur impossible",
+        ),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -383,7 +505,7 @@ export function NewBinderDialog({
         <DialogHeader className="flex-row items-center justify-between space-y-0 bg-sidebar px-6 py-4 text-sidebar-foreground [&>button]:hidden">
           <DialogTitle className="flex items-center gap-3 text-lg font-semibold">
             <FilePlus2 className="h-5 w-5" />
-            {t("newBinder.title")}
+            {draftBinder?.name ?? t("newBinder.title")}
           </DialogTitle>
           <button
             type="button"
@@ -893,7 +1015,11 @@ export function NewBinderDialog({
               disabled={!canNext || isBusy}
               className="bg-action text-action-foreground hover:opacity-90"
             >
-              {step === "review" ? t("newBinder.create") : t("newBinder.next")}
+              {step === "review"
+                ? draftBinder
+                  ? t("detail.startBinder")
+                  : t("newBinder.create")
+                : t("newBinder.next")}
             </Button>
           </div>
         </div>
